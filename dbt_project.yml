@@ -1,17 +1,26 @@
+# ────────────────────────────────────────────────────────────────────────────────
+# dbt_project.yml
+#
+# Project:        dm2_aikya
+# Purpose:        Defines how dbt builds models into BigQuery,
+#                 partitioned into raw, staging, and analytics layers.
+# Created:        2025-12-03
+# ────────────────────────────────────────────────────────────────────────────────
 
-# Name your project! Project names should contain only lowercase characters
-# and underscores. A good package name should reflect your organization's
-# name or the intended use of these models
-name: 'shop'
-version: '1.0.0'
+# 1) Project identity — must be lowercase, underscore
+name: "dm2_aikya"
+version: "1.0.0"
 config-version: 2
 
-# This setting configures which "profile" dbt uses for this project.
-profile: 'default'
+# 2) Profile — references your ~/.dbt/profiles.yml for BigQuery credentials
+profile: "default"
 
-# These configurations specify where dbt should look for different types of files.
-# The `model-paths` config, for example, states that models in this project can be
-# found in the "models/" directory. You probably won't need to change these!
+# --- 3) Variables for Raw Data Location ---
+vars:
+  raw_data_project: 'dm2-project-479611' # Your actual GCP Project ID
+  raw_data_dataset: 'dm2_aikya_raw'     # Your actual Raw Dataset ID
+
+# --- 4) File locations (Standard) ---
 model-paths: ["models"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]
@@ -19,22 +28,58 @@ seed-paths: ["seeds"]
 macro-paths: ["macros"]
 snapshot-paths: ["snapshots"]
 
-target-path: "target"  # directory which will store compiled SQL files
-clean-targets:         # directories to be removed by `dbt clean`
+# 5) Target directories for compiled artifacts
+target-path: "target" # compiled SQL, manifest.json, etc.
+clean-targets: # directories removed by `dbt clean`
   - "target"
   - "dbt_packages"
 
-
-# Configuring models
-# Full documentation: https://docs.getdbt.com/docs/configuring-models
-
-# In dbt, the default materialization for a model is a view. This means, when you run 
-# dbt run or dbt build, all of your models will be built as a view in your data platform. 
-# The configuration below will override this setting for models in the example folder to 
-# instead be materialized as tables. Any models you add to the root of the models folder will 
-# continue to be built as views. These settings can be overridden in the individual model files
-# using the `{{ config(...) }}` macro.
+# ────────────────────────────────────────────────────────────────────────────────
+# 6) Model configurations by folder
+#
+# We use three BigQuery datasets to isolate each layer:
+#   • raw       ← source tables (loaded externally)
+#   • stg       ← staging views
+#   • analytics ← dimension & fact tables
+# ────────────────────────────────────────────────────────────────────────────────
 
 models:
-  shop:
-    +materialized: table
+  # Top‐level key must match the project name above
+  dm2_aikya:
+  # ──────────────── Raw sources ────────────────
+    # These are your landing tables (raw JSON payloads). We never materialize SQL here.
+    src:
+      +materialized: ephemeral
+      +schema: dm2_aikya
+
+  # ────────────── Staging layer ───────────────
+    # Flattened, cleaned staging views that feed your dims & facts.
+    staging:
+      +materialized: view
+      +schema: stg
+
+    # ──────────── Dimension tables ───────────────
+    # Persisted tables for your dimensional lookups (e.g. stations, date).
+    dimensions:
+      +materialized: table
+      +schema: analytics
+
+    # ────────────── Fact tables ──────────────────
+    # Persisted tables for your business metrics (status history, trips).
+    facts:
+      +materialized: table
+      +schema: analytics
+
+    # ────────────── Mart tables ──────────────────
+    # Persisted tables for your business metrics (status history, trips).
+    marts:
+      +materialized: table
+      +schema: analytics
+
+    # ─────────── Default for any other models ───────
+    # If you create models outside src/staging/dimensions/facts,
+    # they will be built as views in the default analytics schema.
+    +materialized: view
+
+    
+
