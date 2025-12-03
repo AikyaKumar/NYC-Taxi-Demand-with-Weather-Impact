@@ -24,7 +24,7 @@ SELECT
     tolls_amount,
     improvement_surcharge,
     total_amount,
-    
+    TIMESTAMP_TRUNC(pickup_timestamp, HOUR) AS pickup_hour,
     -- Create a unique key for the trip
     FARM_FINGERPRINT(CONCAT(CAST(tpep_pickup_datetime AS STRING), CAST(pulocationid AS STRING), CAST(dolocationid AS STRING))) AS trip_sk
     
