@@ -1,0 +1,93 @@
+# models/dimensions/schema.yml
+version: 2
+
+models:
+  - name: dim_date
+    description: "Date dimension table for all dates in the dataset range"
+    columns:
+      - name: date_key
+        description: "Date primary key (YYYY-MM-DD)"
+        tests:
+          - unique
+          - not_null
+      - name: year
+        description: "Year extracted from date"
+      - name: month
+        description: "Month number (1-12)"
+      - name: month_name
+        description: "Full month name"
+      - name: day_of_week
+        description: "Day of week number (1=Sunday)"
+      - name: day_name
+        description: "Day name (Monday, Tuesday, etc.)"
+      - name: is_weekend
+        description: "Boolean indicating if date is weekend"
+      - name: season
+        description: "Season of the year"
+
+  - name: dim_date_time
+    description: "Date-time dimension for precise timestamp analysis"
+    columns:
+      - name: datetime_sk
+        description: "Surrogate key for datetime"
+        tests:
+          - unique
+          - not_null
+      - name: datetime_key
+        description: "Original timestamp"
+      - name: hour_of_day
+        description: "Hour of day (0-23)"
+      - name: peak_time_band
+        description: "Traffic time band classification"
+
+  - name: dim_taxi_zones
+    description: "Taxi zone dimension with location details"
+    columns:
+      - name: location_id
+        description: "Natural key for taxi zone"
+        tests:
+          - unique
+          - not_null
+      - name: borough
+        description: "NYC borough name"
+      - name: zone_name
+        description: "Taxi zone name"
+
+  - name: dim_vendor
+    description: "Taxi vendor dimension"
+    columns:
+      - name: vendor_sk
+        description: "Surrogate key for vendor"
+        tests:
+          - unique
+          - not_null
+      - name: vendor_id
+        description: "Original vendor code"
+      - name: vendor_name
+        description: "Full vendor name"
+
+  - name: dim_payment_type
+    description: "Payment type dimension"
+    columns:
+      - name: payment_sk
+        description: "Surrogate key for payment type"
+        tests:
+          - unique
+          - not_null
+      - name: payment_type
+        description: "Original payment code"
+      - name: payment_method
+        description: "Payment method description"
+
+  - name: dim_weather_conditions
+    description: "Weather conditions dimension"
+    columns:
+      - name: weather_sk
+        description: "Surrogate key for weather"
+        tests:
+          - unique
+          - not_null
+      - name: weather_code
+        description: "Original weather code"
+      - name: weather_description
+        description: "Human readable weather description"
