@@ -35,9 +35,25 @@ SELECT
     -- NYC-specific holidays that affect taxi demand
     CASE 
         WHEN date IN (
-            '2025-01-01', '2025-01-16', '2025-02-20', '2025-05-29',
-            '2025-07-04', '2025-09-04', '2025-10-09', '2025-11-10',
-            '2025-11-23', '2025-12-25'
+        -- 2025 US Federal Holidays
+        '2025-01-01',  -- New Year's Day
+        '2025-01-20',  -- Martin Luther King Jr. Day (3rd Monday)
+        '2025-02-17',  -- Presidents' Day (3rd Monday)
+        '2025-05-26',  -- Memorial Day (last Monday)
+        '2025-06-19',  -- Juneteenth
+        '2025-07-04',  -- Independence Day
+        '2025-09-01',  -- Labor Day (1st Monday)
+        '2025-10-13',  -- Columbus Day (2nd Monday)
+        '2025-11-11',  -- Veterans Day
+        '2025-11-27',  -- Thanksgiving (4th Thursday)
+        '2025-12-25',  -- Christmas Day
+        
+        -- NYC-Specific Events (major impact on taxi demand)
+        '2025-03-17',  -- St. Patrick's Day (parade - huge taxi demand)
+        '2025-04-20',  -- Easter Sunday
+        '2025-05-04',  -- NYC Marathon Sunday (if in Nov, adjust)
+        '2025-09-07',  -- US Open Finals weekend
+        '2025-12-31'   -- New Year's Eve
         ) THEN TRUE
         ELSE FALSE
     END AS is_holiday,

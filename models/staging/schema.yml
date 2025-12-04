@@ -1,67 +1,113 @@
+# models/staging/schema.yml
 version: 2
 
 models:
   - name: stg_taxi_trips
-    description: "Cleaned and standardized view of NYC yellow taxi trip records."
+    description: "Cleaned and standardized NYC yellow taxi trip records. Removes nulls, casts types, and renames columns for consistency."
+    config:
+      tags: ["staging", "taxi", "cleaned"]
     columns:
       - name: trip_sk
-        description: "Surrogate Key (SK) for the trip, derived from timestamp and location IDs."
+        description: "Surrogate key for trip (hash of pickup time and locations). Not guaranteed unique."
         tests:
           - not_null
       - name: vendor_id
-        description: "Code indicating the taxi vendor."
+        description: "Taxi vendor code (1=CMT, 2=Verifone)"
         tests:
           - not_null
+          - accepted_values:
+              values: [1, 2]
       - name: pickup_timestamp
-        description: "Timestamp when the taxi meter was engaged."
+        description: "Timestamp when meter was engaged"
         tests:
           - not_null
       - name: dropoff_timestamp
-        description: "Timestamp when the taxi meter was disengaged."
+        description: "Timestamp when meter was disengaged"
         tests:
           - not_null
-      # ... [keep all existing columns]
-      - name: extra
-        description: "Extra charges"
-      - name: mta_tax
-        description: "MTA tax amount"
-      - name: tip_amount
-        description: "Tip amount"
-      - name: tolls_amount
-        description: "Tolls amount"
-      - name: improvement_surcharge
-        description: "Improvement surcharge"
-      - name: pickup_hour
-        description: "Hour bucket for pickup time"
-
+      - name: passenger_count
+        description: "Number of passengers (1-9, 0=unknown)"
+      - name: trip_distance
+        description: "Trip distance in miles"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+      - name: pickup_location_id
+        description: "Pickup location ID (foreign key to taxi zones)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_taxi_zones')
+              field: location_id
+      - name: dropoff_location_id
+        description: "Dropoff location ID (foreign key to taxi zones)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_taxi_zones')
+              field: location_id
+      - name: total_amount
+        description: "Total fare amount charged"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 500
+  
   - name: stg_taxi_zones
-    # ... [keep as is]
-
-  - name: stg_weather
-    description: "Cleaned hourly weather data linked by date/time."
+    description: "Cleaned taxi zone dimension with standardized borough and zone names"
+    config:
+      tags: ["staging", "dimension", "zones"]
     columns:
-      - name: weather_timestamp
-        description: "The precise timestamp for the weather reading."
+      - name: location_id
+        description: "Unique location identifier"
         tests:
           - unique
           - not_null
+      - name: borough
+        description: "NYC borough name"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Manhattan', 'Brooklyn', 'Queens', 'Bronx', 'Staten Island', 'EWR']
+      - name: zone_name
+        description: "Taxi zone name"
+        tests:
+          - not_null
+      - name: service_zone
+        description: "Service zone type"
+  
+  - name: stg_weather
+    description: "Cleaned hourly weather data with standardized column names and types"
+    config:
+      tags: ["staging", "weather", "cleaned"]
+    columns:
+      - name: weather_timestamp
+        description: "Weather observation timestamp"
+        tests:
+          - not_null
       - name: weather_date
-        description: "Date part of the timestamp."
+        description: "Date component for joining"
         tests:
           - not_null
       - name: temperature_celsius
-        description: "Recorded air temperature in Celsius."
+        description: "Temperature in Celsius"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -30
+              max_value: 45
       - name: rain_mm
-        description: "Recorded rainfall amount in millimeters."
+        description: "Rainfall in millimeters"
       - name: snowfall_mm
-        description: "Recorded snowfall amount in millimeters."
+        description: "Snowfall in millimeters"
       - name: precipitation_mm
-        description: "Total precipitation amount in millimeters."
+        description: "Total precipitation in millimeters"
       - name: wind_speed_kph
-        description: "Recorded wind speed in kilometers per hour."
+        description: "Wind speed in kilometers per hour"
       - name: relative_humidity
-        description: "Recorded relative humidity percentage."
+        description: "Relative humidity percentage"
       - name: weather_code
-        description: "Weather condition code"
+        description: "Weather condition code (WMO standard)"
       - name: is_day
-        description: "1 if daytime, 0 if nighttime"
+        description: "1=daytime, 0=nighttime"

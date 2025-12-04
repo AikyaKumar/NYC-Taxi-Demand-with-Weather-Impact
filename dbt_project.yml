@@ -1,21 +1,17 @@
-# ────────────────────────────────────────────────────────────────────────────────
-# dbt_project.yml
-# ────────────────────────────────────────────────────────────────────────────────
-
 name: "dm2_aikya"
 version: "1.0.0"
 config-version: 2
 
 profile: "default"
 
-# --- Variables for Data Locations ---
+# Variables
 vars:
   raw_data_project: 'dm2-project-479611'
   raw_data_dataset: 'dm2_aikya'
-  # COMMENT OUT THESE FOR NOW:
-  # staging_dataset: 'dm2_aikya_stg'
-  # analytics_dataset: 'dm2_aikya_analytics'
+  staging_dataset: 'dm2_aikya_stg'
+  analytics_dataset: 'dm2_aikya_analytics'
 
+# File paths
 model-paths: ["models"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]
@@ -28,36 +24,26 @@ clean-targets:
   - "target"
   - "dbt_packages"
 
-# ────────────────────────────────────────────────────────────────────────────────
-# Model configurations - HARDCODE VALUES
-# ────────────────────────────────────────────────────────────────────────────────
-
+# Model configurations
 models:
   dm2_aikya:
-    # ──────────────── Source references ────────────────
-    src:
-      +materialized: ephemeral
     
-    # ────────────── Staging layer ───────────────
+    # Staging models - views
     staging:
       +materialized: view
-      +schema: "dm2_aikya_stg"                    # Hardcoded
+      +schema: "{{ var('staging_dataset') }}"
     
-    # ──────────── Dimension tables ───────────────
+    # Dimension models - tables  
     dimensions:
       +materialized: table
-      +schema: "dm2_aikya_analytics"              # Hardcoded
+      +schema: "{{ var('analytics_dataset') }}"
     
-    # ────────────── Fact tables ──────────────────
+    # Fact models - tables
     facts:
-      +materialized: table
-      +schema: "dm2_aikya_analytics"              # Hardcoded
+      +materialized: table  
+      +schema: "{{ var('analytics_dataset') }}"
     
-    # ────────────── Mart tables ──────────────────
+    # Mart models - tables (for Tableau)
     marts:
       +materialized: table
-      +schema: "dm2_aikya_analytics"              # Hardcoded
-    
-    # ─────────── Default for any other models ───────
-    +materialized: view
-    +schema: "dm2_aikya_analytics"                # Hardcoded
+      +schema: "{{ var('analytics_dataset') }}"
