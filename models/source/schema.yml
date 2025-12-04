@@ -1,0 +1,86 @@
+# models/schema.yml - Source definitions
+version: 2
+
+sources:
+  - name: dm2_aikya
+    description: "Raw NYC Taxi and Weather data for weather impact analysis"
+    database: "dm2-project-479611"
+    schema: "dm2_aikya"
+    
+    tables:
+      - name: nyc_yellow_taxi_trips_raw
+        description: "Raw NYC yellow taxi trip records - includes pickup/dropoff times, fares, and locations"
+        loaded_at_field: tpep_pickup_datetime
+        freshness:
+          warn_after: {count: 24, period: hour}
+          error_after: {count: 48, period: hour}
+        columns:
+          - name: vendorid
+            description: "Taxi vendor identifier (1=CMT, 2=Verifone)"
+          - name: tpep_pickup_datetime
+            description: "Timestamp when passenger was picked up"
+            tests:
+              - not_null
+          - name: tpep_dropoff_datetime
+            description: "Timestamp when passenger was dropped off"
+          - name: passenger_count
+            description: "Number of passengers in the vehicle"
+          - name: trip_distance
+            description: "Trip distance in miles"
+          - name: pulocationid
+            description: "Pickup location ID (matches taxi zones)"
+          - name: dolocationid
+            description: "Dropoff location ID (matches taxi zones)"
+          - name: total_amount
+            description: "Total amount charged to passenger"
+            tests:
+              - not_null
+      
+      - name: nyc_taxi_zones_raw
+        description: "Taxi zone lookup table - maps location IDs to boroughs and zone names"
+        loaded_at_field: _loaded_at
+        columns:
+          - name: LocationID
+            description: "Unique location identifier"
+            tests:
+              - unique
+              - not_null
+          - name: Borough
+            description: "NYC borough name"
+          - name: Zone
+            description: "Taxi zone name"
+          - name: service_zone
+            description: "Service zone type (Airport, Boro Zone, etc.)"
+      
+      - name: nyc_weather_raw
+        description: "Hourly historical weather data for NYC"
+        loaded_at_field: timestamp
+        freshness:
+          warn_after: {count: 3, period: hour}
+          error_after: {count: 6, period: hour}
+        columns:
+          - name: timestamp
+            description: "Weather observation timestamp"
+            tests:
+              - not_null
+          - name: temperature_2m
+            description: "Air temperature at 2 meters (°C)"
+          - name: rain
+            description: "Rainfall amount (mm)"
+          - name: snowfall
+            description: "Snowfall amount (mm)"
+          - name: precipitation
+            description: "Total precipitation (mm)"
+          - name: wind_speed_10m
+            description: "Wind speed at 10 meters (km/h)"
+          - name: weather_code
+            description: "Weather condition code (WMO code)"
+          - name: relative_humidity_2m
+            description: "Relative humidity at 2 meters (%)"
+      
+      - name: raw_hourly_weather_live
+        description: "Real-time or near-real-time hourly weather observations"
+        loaded_at_field: timestamp
+        freshness:
+          warn_after: {count: 1, period: hour}
+          error_after: {count: 2, period: hour}

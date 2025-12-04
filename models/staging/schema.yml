@@ -1,0 +1,113 @@
+# models/staging/schema.yml
+version: 2
+
+models:
+  - name: stg_taxi_trips
+    description: "Cleaned and standardized NYC yellow taxi trip records. Removes nulls, casts types, and renames columns for consistency."
+    config:
+      tags: ["staging", "taxi", "cleaned"]
+    columns:
+      - name: trip_sk
+        description: "Surrogate key for trip (hash of pickup time and locations). Not guaranteed unique."
+        tests:
+          - not_null
+      - name: vendor_id
+        description: "Taxi vendor code (1=CMT, 2=Verifone)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2]
+      - name: pickup_timestamp
+        description: "Timestamp when meter was engaged"
+        tests:
+          - not_null
+      - name: dropoff_timestamp
+        description: "Timestamp when meter was disengaged"
+        tests:
+          - not_null
+      - name: passenger_count
+        description: "Number of passengers (1-9, 0=unknown)"
+      - name: trip_distance
+        description: "Trip distance in miles"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+      - name: pickup_location_id
+        description: "Pickup location ID (foreign key to taxi zones)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_taxi_zones')
+              field: location_id
+      - name: dropoff_location_id
+        description: "Dropoff location ID (foreign key to taxi zones)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_taxi_zones')
+              field: location_id
+      - name: total_amount
+        description: "Total fare amount charged"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 500
+  
+  - name: stg_taxi_zones
+    description: "Cleaned taxi zone dimension with standardized borough and zone names"
+    config:
+      tags: ["staging", "dimension", "zones"]
+    columns:
+      - name: location_id
+        description: "Unique location identifier"
+        tests:
+          - unique
+          - not_null
+      - name: borough
+        description: "NYC borough name"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Manhattan', 'Brooklyn', 'Queens', 'Bronx', 'Staten Island', 'EWR']
+      - name: zone_name
+        description: "Taxi zone name"
+        tests:
+          - not_null
+      - name: service_zone
+        description: "Service zone type"
+  
+  - name: stg_weather
+    description: "Cleaned hourly weather data with standardized column names and types"
+    config:
+      tags: ["staging", "weather", "cleaned"]
+    columns:
+      - name: weather_timestamp
+        description: "Weather observation timestamp"
+        tests:
+          - not_null
+      - name: weather_date
+        description: "Date component for joining"
+        tests:
+          - not_null
+      - name: temperature_celsius
+        description: "Temperature in Celsius"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -30
+              max_value: 45
+      - name: rain_mm
+        description: "Rainfall in millimeters"
+      - name: snowfall_mm
+        description: "Snowfall in millimeters"
+      - name: precipitation_mm
+        description: "Total precipitation in millimeters"
+      - name: wind_speed_kph
+        description: "Wind speed in kilometers per hour"
+      - name: relative_humidity
+        description: "Relative humidity percentage"
+      - name: weather_code
+        description: "Weather condition code (WMO standard)"
+      - name: is_day
+        description: "1=daytime, 0=nighttime"
