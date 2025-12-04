@@ -1,26 +1,21 @@
 # ────────────────────────────────────────────────────────────────────────────────
 # dbt_project.yml
-#
-# Project:        dm2_aikya
-# Purpose:        Defines how dbt builds models into BigQuery,
-#                 partitioned into raw, staging, and analytics layers.
-# Created:        2025-12-03
 # ────────────────────────────────────────────────────────────────────────────────
 
-# 1) Project identity — must be lowercase, underscore
 name: "dm2_aikya"
 version: "1.0.0"
 config-version: 2
 
-# 2) Profile — references your ~/.dbt/profiles.yml for BigQuery credentials
 profile: "default"
 
-# --- 3) Variables for Raw Data Location ---
+# --- Variables for Data Locations ---
 vars:
-  raw_data_project: 'dm2-project-479611' # Your actual GCP Project ID
-  raw_data_dataset: 'dm2_aikya_raw'     # Your actual Raw Dataset ID
+  raw_data_project: 'dm2-project-479611'
+  raw_data_dataset: 'dm2_aikya'
+  # COMMENT OUT THESE FOR NOW:
+  # staging_dataset: 'dm2_aikya_stg'
+  # analytics_dataset: 'dm2_aikya_analytics'
 
-# --- 4) File locations (Standard) ---
 model-paths: ["models"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]
@@ -28,58 +23,41 @@ seed-paths: ["seeds"]
 macro-paths: ["macros"]
 snapshot-paths: ["snapshots"]
 
-# 5) Target directories for compiled artifacts
-target-path: "target" # compiled SQL, manifest.json, etc.
-clean-targets: # directories removed by `dbt clean`
+target-path: "target"
+clean-targets:
   - "target"
   - "dbt_packages"
 
 # ────────────────────────────────────────────────────────────────────────────────
-# 6) Model configurations by folder
-#
-# We use three BigQuery datasets to isolate each layer:
-#   • raw       ← source tables (loaded externally)
-#   • stg       ← staging views
-#   • analytics ← dimension & fact tables
+# Model configurations - HARDCODE VALUES
 # ────────────────────────────────────────────────────────────────────────────────
 
 models:
-  # Top‐level key must match the project name above
   dm2_aikya:
-  # ──────────────── Raw sources ────────────────
-    # These are your landing tables (raw JSON payloads). We never materialize SQL here.
+    # ──────────────── Source references ────────────────
     src:
       +materialized: ephemeral
-      +schema: dm2_aikya
-
-  # ────────────── Staging layer ───────────────
-    # Flattened, cleaned staging views that feed your dims & facts.
+    
+    # ────────────── Staging layer ───────────────
     staging:
       +materialized: view
-      +schema: stg
-
+      +schema: "dm2_aikya_stg"                    # Hardcoded
+    
     # ──────────── Dimension tables ───────────────
-    # Persisted tables for your dimensional lookups (e.g. stations, date).
     dimensions:
       +materialized: table
-      +schema: analytics
-
+      +schema: "dm2_aikya_analytics"              # Hardcoded
+    
     # ────────────── Fact tables ──────────────────
-    # Persisted tables for your business metrics (status history, trips).
     facts:
       +materialized: table
-      +schema: analytics
-
+      +schema: "dm2_aikya_analytics"              # Hardcoded
+    
     # ────────────── Mart tables ──────────────────
-    # Persisted tables for your business metrics (status history, trips).
     marts:
       +materialized: table
-      +schema: analytics
-
-    # ─────────── Default for any other models ───────
-    # If you create models outside src/staging/dimensions/facts,
-    # they will be built as views in the default analytics schema.
-    +materialized: view
-
+      +schema: "dm2_aikya_analytics"              # Hardcoded
     
-
+    # ─────────── Default for any other models ───────
+    +materialized: view
+    +schema: "dm2_aikya_analytics"                # Hardcoded

@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: stg_taxi_trips
+    description: "Cleaned and standardized view of NYC yellow taxi trip records."
+    columns:
+      - name: trip_sk
+        description: "Surrogate Key (SK) for the trip, derived from timestamp and location IDs."
+        tests:
+          - not_null
+      - name: vendor_id
+        description: "Code indicating the taxi vendor."
+        tests:
+          - not_null
+      - name: pickup_timestamp
+        description: "Timestamp when the taxi meter was engaged."
+        tests:
+          - not_null
+      - name: dropoff_timestamp
+        description: "Timestamp when the taxi meter was disengaged."
+        tests:
+          - not_null
+      # ... [keep all existing columns]
+      - name: extra
+        description: "Extra charges"
+      - name: mta_tax
+        description: "MTA tax amount"
+      - name: tip_amount
+        description: "Tip amount"
+      - name: tolls_amount
+        description: "Tolls amount"
+      - name: improvement_surcharge
+        description: "Improvement surcharge"
+      - name: pickup_hour
+        description: "Hour bucket for pickup time"
+
+  - name: stg_taxi_zones
+    # ... [keep as is]
+
+  - name: stg_weather
+    description: "Cleaned hourly weather data linked by date/time."
+    columns:
+      - name: weather_timestamp
+        description: "The precise timestamp for the weather reading."
+        tests:
+          - unique
+          - not_null
+      - name: weather_date
+        description: "Date part of the timestamp."
+        tests:
+          - not_null
+      - name: temperature_celsius
+        description: "Recorded air temperature in Celsius."
+      - name: rain_mm
+        description: "Recorded rainfall amount in millimeters."
+      - name: snowfall_mm
+        description: "Recorded snowfall amount in millimeters."
+      - name: precipitation_mm
+        description: "Total precipitation amount in millimeters."
+      - name: wind_speed_kph
+        description: "Recorded wind speed in kilometers per hour."
+      - name: relative_humidity
+        description: "Recorded relative humidity percentage."
+      - name: weather_code
+        description: "Weather condition code"
+      - name: is_day
+        description: "1 if daytime, 0 if nighttime"

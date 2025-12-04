@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: dm2_aikya  # Logical name for source
+    description: "Raw data for NYC Taxi and Weather data"
+    database: "{{ var('raw_data_project') }}"  # 'dm2-project-479611'
+    schema: "{{ var('raw_data_dataset') }}"    # 'dm2_aikya' (your existing dataset)
+    
+    tables:
+      - name: nyc_yellow_taxi_trips_raw
+        description: "Contains detailed records for each NYC yellow taxi trip"
+      - name: nyc_taxi_zones_raw
+        description: "Mapping table for Location IDs to Borough and Zone names"
+      - name: nyc_weather_raw
+        description: "Hourly historical weather data for NYC"
+      - name: raw_hourly_weather_live
+        description: "Real-time hourly weather observations"
