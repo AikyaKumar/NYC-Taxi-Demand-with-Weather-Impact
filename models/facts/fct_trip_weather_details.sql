@@ -21,8 +21,9 @@ WITH trip_weather AS (
         
         -- Weather at EXACT Pickup Time (closest hour)
         w.temperature_celsius AS pickup_temp_c,
-        w.rain_mm AS pickup_rain_mm,
-        w.snowfall_mm AS pickup_snow_mm,
+        -- FIX 1: Use the correct column name for total precipitation
+        w.precipitation_mm AS pickup_precipitation_mm,
+        -- FIX 2: Removed w.snowfall_mm
         w.wind_speed_kph AS pickup_wind_speed,
         w.weather_code AS pickup_weather_code,
         
@@ -51,9 +52,10 @@ WITH trip_weather AS (
         
         -- Weather Impact Flags
         CASE 
-            WHEN w.rain_mm > 2 THEN 'Heavy Rain Trip'
-            WHEN w.rain_mm > 0 THEN 'Light Rain Trip'
-            WHEN w.snowfall_mm > 0 THEN 'Snow Trip'
+            -- FIX 3: Use the combined precipitation_mm column for both checks
+            WHEN w.precipitation_mm > 2 THEN 'Heavy Rain/Snow Trip'
+            WHEN w.precipitation_mm > 0 THEN 'Light Rain/Snow Trip'
+            -- Removed the snowfall check
             WHEN w.temperature_celsius > 30 THEN 'Hot Weather Trip'
             WHEN w.temperature_celsius < 0 THEN 'Cold Weather Trip'
             ELSE 'Normal Weather Trip'

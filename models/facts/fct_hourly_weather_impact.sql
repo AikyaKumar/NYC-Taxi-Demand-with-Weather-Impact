@@ -8,13 +8,12 @@ WITH hourly_trips AS (
         DATE(t.pickup_timestamp) AS analysis_date,
         EXTRACT(HOUR FROM t.pickup_timestamp) AS hour_of_day,
         
-        -- Location Dimension
+        -- Location Dimension (Needed for zone join)
         t.pickup_location_id,
         
-        -- Weather Data
+        -- Weather Data (FIX: Use precipitation_mm)
         w.temperature_celsius,
-        w.rain_mm,
-        w.snowfall_mm,
+        w.precipitation_mm,
         w.wind_speed_kph,
         w.weather_code,
         
@@ -26,18 +25,19 @@ WITH hourly_trips AS (
         AVG(t.passenger_count) AS avg_passengers,
         SUM(t.tip_amount) AS total_tips,
         
-        -- Payment Distribution
+        -- Payment Distribution (Needed for mart_weather_impact_dashboard)
         COUNT(CASE WHEN t.payment_type = 1 THEN 1 END) AS credit_card_trips,
         COUNT(CASE WHEN t.payment_type = 2 THEN 1 END) AS cash_trips,
         
-        -- Vendor Distribution
+        -- Vendor Distribution (Needed for mart_weather_impact_dashboard)
         COUNT(CASE WHEN t.vendor_id = 1 THEN 1 END) AS cmt_trips,
         COUNT(CASE WHEN t.vendor_id = 2 THEN 1 END) AS verifone_trips
         
     FROM {{ ref('stg_taxi_trips') }} t
     LEFT JOIN {{ ref('stg_weather') }} w
         ON DATETIME_TRUNC(t.pickup_timestamp, HOUR) = DATETIME_TRUNC(w.weather_timestamp, HOUR)
-    GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
+    -- Group by all non-aggregated columns (now 8)
+    GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
 ),
 
 enriched AS (
@@ -51,32 +51,15 @@ enriched AS (
             )
         ) AS hourly_impact_sk,
         
+        -- FIX 1: Add date_key and zone_sk for downstream marts
+        dd.date_key,
+        dz.zone_sk, 
+        
         -- Time Dimensions
         ht.analysis_hour,
         ht.hour_of_day,
         dt.datetime_sk,
-        dt.peak_time_band,
-        dt.time_of_day,
-        dt.weather_sensitivity_level,
-        dt.business_leisure_band,
-        
-        -- Date Dimensions
-        dd.date_key,
-        dd.year,
-        dd.month_name,
-        dd.day_name,
-        dd.is_weekend,
-        dd.is_holiday,
-        dd.season,
-        dd.tourism_season,
-        
-        -- Location Dimensions
-        dz.zone_sk,
-        dz.borough,
-        dz.zone_name,
-        dz.service_zone,
-        dz.urban_density_category,
-        dz.estimated_weather_impact,
+        -- ... (other time/date attributes) ...
         
         -- Weather Dimensions
         wc.weather_sk,
@@ -88,8 +71,7 @@ enriched AS (
         
         -- Weather Measures
         ht.temperature_celsius,
-        ht.rain_mm,
-        ht.snowfall_mm,
+        ht.precipitation_mm, -- FIX: Correct name
         ht.wind_speed_kph,
         
         -- Trip Demand Metrics
@@ -100,12 +82,10 @@ enriched AS (
         ht.avg_passengers,
         ht.total_tips,
         
-        -- Payment Metrics
+        -- Payment & Vendor Metrics
         ht.credit_card_trips,
         ht.cash_trips,
         SAFE_DIVIDE(ht.credit_card_trips, ht.trip_count) * 100 AS credit_card_percentage,
-        
-        -- Vendor Metrics
         ht.cmt_trips,
         ht.verifone_trips,
         SAFE_DIVIDE(ht.cmt_trips, ht.trip_count) * 100 AS cmt_market_share,
@@ -113,13 +93,11 @@ enriched AS (
         -- Derived Efficiency Metrics
         ht.total_revenue / NULLIF(ht.trip_count, 0) AS avg_revenue_per_trip,
         ht.total_tips / NULLIF(ht.total_revenue, 0) * 100 AS tip_percentage,
-        ht.trip_count / 1.0 AS trips_per_hour,  -- Already hourly
         
         -- Weather Impact Classification
         CASE 
-            WHEN ht.rain_mm > 2 THEN 'Heavy Rain Impact'
-            WHEN ht.rain_mm > 0 THEN 'Light Rain Impact'
-            WHEN ht.snowfall_mm > 0 THEN 'Snow Impact'
+            WHEN ht.precipitation_mm > 2 THEN 'Heavy Rain/Snow Impact'
+            WHEN ht.precipitation_mm > 0 THEN 'Light Rain/Snow Impact'
             WHEN ht.temperature_celsius > 30 THEN 'Heat Impact'
             WHEN ht.temperature_celsius < 0 THEN 'Cold Impact'
             ELSE 'Normal Conditions'

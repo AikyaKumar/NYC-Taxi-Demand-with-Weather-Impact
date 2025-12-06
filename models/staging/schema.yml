@@ -96,7 +96,9 @@ models:
       - name: temperature_celsius
         description: "Temperature in Celsius (Sourced from temperature_2m, FLOAT type)"
         tests:
-          - dbt_expectations.expect_column_values_to_be_between:
+          - dbt_expectations.expect_column_values_to_be_between: 
+              min_value: -40
+              max_value: 50
       - name: precipitation_mm
         description: "Total precipitation in millimeters (Sourced from precipitation, FLOAT type)"
       - name: wind_speed_kph

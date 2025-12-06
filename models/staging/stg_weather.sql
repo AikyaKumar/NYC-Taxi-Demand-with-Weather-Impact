@@ -1,22 +1,35 @@
-{{ config(materialized='view', schema='stg') }}
+{{ config(materialized='view') }}
 
 SELECT
+    -- MAPPING & CASTING
     CAST(hourly_timestamp AS TIMESTAMP) AS weather_timestamp,
+    DATE(hourly_timestamp) AS weather_date,
     
+    -- Sourced from the image/raw schema, defined in the target staging schema
+    CAST(weather_code AS INTEGER) AS weather_code,
+    
+    -- Sourced from the image/raw schema, defined in the target staging schema
     CAST(temperature_2m AS NUMERIC) AS temperature_celsius,
-    CAST(relative_humidity_2m AS NUMERIC) AS relative_humidity,
     
-    -- ONLY precipitation is available from the Open-Meteo hourly vars
+    -- Sourced from the image/raw schema, defined in the target staging schema
     CAST(precipitation AS NUMERIC) AS precipitation_mm,
     
-    -- These columns ARE available and must be included
-    CAST(cloudcover AS INTEGER) AS cloudcover_pct,
+    -- Sourced from the image/raw schema, defined in the target staging schema
     CAST(windspeed_10m AS NUMERIC) AS wind_speed_kph, 
     
-    -- weather_code is requested from the API (HOURLY_VARS) but not defined in your PySpark TARGET_SCHEMA.
-    -- If the PySpark job does not land 'weather_code', this will fail. We'll proceed assuming the PySpark schema is definitive (no weather_code).
+    -- Sourced from the image/raw schema, defined in the target staging schema
+    CAST(relative_humidity_2m AS NUMERIC) AS relative_humidity,
     
-    DATE(hourly_timestamp) AS weather_date
+    -- Sourced from the image/raw schema, defined in the target staging schema
+    CAST(is_day AS INTEGER) AS is_day,
 
-FROM {{ source('dm2_aikya', 'nyc_weather_raw') }}
+    -- Retain cloudcover for completeness, although not in the target staging schema provided
+    CAST(cloudcover AS INTEGER) AS cloudcover_pct,
+    
+    -- Keeping source columns for potential future use or debugging
+    latitude,
+    longitude,
+    timezone
+
+FROM `dm2-project-479611`.`dm2_aikya`.`nyc_weather_raw`
 WHERE hourly_timestamp IS NOT NULL

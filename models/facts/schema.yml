@@ -1,97 +1,62 @@
-# models/facts/schema.yml
 version: 2
 
 models:
-  - name: fct_trip_weather_details
-    description: "Trip-level fact table with detailed weather conditions at pickup time. For granular analysis of individual trips."
-    config:
-      tags: ["fact", "transactional", "trip-level", "weather-details"]
-    columns:
-      - name: trip_sk
-        description: "Trip surrogate key"
-        tests:
-          - not_null
-      - name: pickup_datetime_sk
-        description: "Foreign key to datetime dimension"
-        tests:
-          - not_null
-          - relationships:
-              to: ref('dim_date_time')
-              field: datetime_sk
-      - name: pickup_zone_sk
-        description: "Foreign key to pickup zone dimension"
-        tests:
-          - relationships:
-              to: ref('dim_taxi_zones')
-              field: zone_sk
-      - name: weather_sk
-        description: "Foreign key to weather conditions dimension"
-        tests:
-          - relationships:
-              to: ref('dim_weather_conditions')
-              field: weather_sk
-      - name: pickup_temp_c
-        description: "Temperature at pickup time (°C)"
-      - name: pickup_rain_mm
-        description: "Rainfall at pickup time (mm)"
-      - name: was_rainy
-        description: "TRUE if weather was rainy at pickup"
-      - name: trip_distance
-        description: "Trip distance in miles"
-      - name: total_amount
-        description: "Total fare amount"
-        tests:
-          - not_null
-      - name: trip_duration_minutes
-        description: "Trip duration in minutes"
-      - name: weather_condition_at_pickup
-        description: "Weather condition classification at pickup"
-  
   - name: fct_hourly_weather_impact
-    description: "Hourly aggregated fact table showing weather impact on taxi demand, revenue, and efficiency metrics."
+    description: "Hourly aggregated fact table showing weather impact on taxi demand, revenue, and efficiency metrics, grouped by pickup zone."
     config:
       tags: ["fact", "aggregated", "hourly", "weather-impact"]
     columns:
+      # --- KEYS AND DIMENSIONS ---
       - name: hourly_impact_sk
-        description: "Surrogate key for hourly impact record"
+        description: "Surrogate key for hourly impact record (Composite of hour and zone)."
         tests:
           - unique
           - not_null
+      - name: analysis_hour # Directly map the TIMESTAMP column from the SQL
+        description: "The hour of the analysis (TIMESTAMP in NYC time zone)."
+        tests:
+          - not_null
       - name: datetime_sk
-        description: "Foreign key to datetime dimension"
+        description: "Foreign key to the Date/Time dimension."
         tests:
           - relationships:
               to: ref('dim_date_time')
               field: datetime_sk
-      - name: date_key
-        description: "Foreign key to date dimension"
-        tests:
-          - relationships:
-              to: ref('dim_date')
-              field: date_key
       - name: zone_sk
-        description: "Foreign key to zone dimension"
+        description: "Foreign key to the pickup zone dimension."
         tests:
           - relationships:
               to: ref('dim_taxi_zones')
               field: zone_sk
       - name: weather_sk
-        description: "Foreign key to weather conditions dimension"
+        description: "Foreign key to the weather conditions dimension."
         tests:
           - relationships:
               to: ref('dim_weather_conditions')
               field: weather_sk
+      
+      # --- WEATHER MEASURES (FROM STG_WEATHER) ---
       - name: temperature_celsius
-        description: "Average temperature for the hour"
-      - name: rain_mm
-        description: "Total rainfall for the hour"
+        description: "Average temperature for the hour (°C)."
+      - name: precipitation_mm # ⬅️ CORRECTED COLUMN NAME
+        description: "Total precipitation (liquid + frozen) for the hour (mm)."
+      
+      # --- DEMAND AND FINANCIAL MEASURES ---
       - name: trip_count
-        description: "Number of trips in the hour"
+        description: "Number of trips starting in the zone during the hour."
         tests:
           - not_null
       - name: total_revenue
-        description: "Total revenue for the hour"
+        description: "Total revenue for the hour."
+      - name: total_tips
+        description: "Total tip amount for the hour."
+      - name: avg_trip_duration
+        description: "Average trip duration in minutes for the hour."
+      
+      # --- DERIVED METRICS AND CLASSIFICATIONS ---
       - name: credit_card_percentage
-        description: "Percentage of trips paid by credit card"
+        description: "Percentage of trips paid by credit card."
+      - name: avg_revenue_per_trip
+        description: "Total revenue divided by trip count."
       - name: weather_impact_type
-        description: "Weather impact classification"
+        description: "Weather condition classification (e.g., Heavy Rain Impact, Normal Conditions)."

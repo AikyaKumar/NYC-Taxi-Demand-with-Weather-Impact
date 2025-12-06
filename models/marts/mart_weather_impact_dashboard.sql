@@ -19,10 +19,9 @@ WITH daily_aggregates AS (
         MAX(CASE WHEN wc.weather_severity = 'Severe' THEN 1 ELSE 0 END) AS had_severe_weather,
         
         AVG(f.temperature_celsius) AS avg_daily_temp,
-        SUM(f.rain_mm) AS total_daily_rain,
-        SUM(f.snowfall_mm) AS total_daily_snow,
+        SUM(f.precipitation_mm) AS total_daily_precipitation, -- FIX: Use correct column
         
-        -- Taxi Performance (from your existing mart + new)
+        -- Taxi Performance (columns now verified to exist in FCT)
         SUM(f.trip_count) AS total_daily_trips,
         SUM(f.total_revenue) AS total_daily_revenue,
         AVG(f.avg_trip_distance) AS avg_daily_distance,
@@ -30,21 +29,23 @@ WITH daily_aggregates AS (
         AVG(f.avg_passengers) AS avg_daily_passengers,
         SUM(f.total_tips) AS total_daily_tips,
         
-        -- Payment Distribution
+        -- Payment Distribution (columns now verified to exist in FCT)
         SUM(f.credit_card_trips) AS credit_card_trips,
         SUM(f.cash_trips) AS cash_trips,
         
-        -- Vendor Distribution
+        -- Vendor Distribution (columns now verified to exist in FCT)
         SUM(f.cmt_trips) AS cmt_trips,
         SUM(f.verifone_trips) AS verifone_trips
         
     FROM {{ ref('fct_hourly_weather_impact') }} f
+    -- FIX: f.date_key is now present in the fact table
     LEFT JOIN {{ ref('dim_date') }} dd ON f.date_key = dd.date_key
     LEFT JOIN {{ ref('dim_weather_conditions') }} wc ON f.weather_sk = wc.weather_sk
     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
 ),
 
 baseline_calculation AS (
+    -- ... (unchanged) ...
     SELECT
         *,
         -- Calculate baselines (excluding current day)
@@ -79,10 +80,9 @@ SELECT
     had_snow,
     had_severe_weather,
     avg_daily_temp,
-    total_daily_rain,
-    total_daily_snow,
+    total_daily_precipitation, -- FIX: Use the new aggregated column
     
-    -- Performance Metrics
+    -- ... (Performance Metrics, Distributions, Baselines remain the same) ...
     total_daily_trips,
     total_daily_revenue,
     avg_daily_distance,
@@ -90,13 +90,11 @@ SELECT
     avg_daily_passengers,
     total_daily_tips,
     
-    -- Distribution Metrics
     credit_card_trips,
     cash_trips,
     cmt_trips,
     verifone_trips,
     
-    -- Baseline Comparisons
     baseline_trips,
     baseline_revenue,
     
