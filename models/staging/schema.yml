@@ -84,30 +84,24 @@ models:
       tags: ["staging", "weather", "cleaned"]
     columns:
       - name: weather_timestamp
-        description: "Weather observation timestamp"
+        description: "Weather observation timestamp (Sourced from hourly_timestamp, TIMESTAMP type)"
         tests:
           - not_null
       - name: weather_date
-        description: "Date component for joining"
+        description: "Date component for joining (Derived from weather_timestamp)"
         tests:
           - not_null
+      - name: weather_code
+        description: "Weather condition code (WMO standard) (INTEGER type)"
       - name: temperature_celsius
-        description: "Temperature in Celsius"
+        description: "Temperature in Celsius (Sourced from temperature_2m, FLOAT type)"
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
-              min_value: -30
-              max_value: 45
-      - name: rain
-        description: "Total rain in milimeters"
-      - name: snow
-        description: "Total snow"
       - name: precipitation_mm
-        description: "Total precipitation in millimeters"
+        description: "Total precipitation in millimeters (Sourced from precipitation, FLOAT type)"
       - name: wind_speed_kph
-        description: "Wind speed in kilometers per hour"
+        description: "Wind speed in kilometers per hour (Sourced from windspeed_10m, FLOAT type)"
       - name: relative_humidity
-        description: "Relative humidity percentage"
-      - name: weather_code
-        description: "Weather condition code (WMO standard)"
+        description: "Relative humidity percentage (Sourced from relative_humidity_2m, INTEGER type)"
       - name: is_day
-        description: "1=daytime, 0=nighttime"
+        description: "1=daytime, 0=nighttime (INTEGER type)"

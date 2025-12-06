@@ -54,26 +54,44 @@ sources:
       
       - name: nyc_weather_raw
         description: "Hourly historical weather data for NYC"
-        loaded_at_field: hourly_timestamp # <<< FIX 1: Change to match source table
+        # The image shows 'hourly_timestamp' as the timestamp field.
+        loaded_at_field: hourly_timestamp
         freshness:
           warn_after: {count: 3, period: hour}
           error_after: {count: 6, period: hour}
         columns:
-          - name: hourly_timestamp     # <<< FIX 2: Change to match source table
+          - name: latitude              
+            description: "Latitude"
+            # Type is FLOAT in image
+          - name: longitude             
+            description: "Longitude"
+            # Type is FLOAT in image
+          - name: timezone              
+            description: "Timezone string"
+            # Type is STRING in image
+          - name: weather_code          
+            description: "Weather condition code (WMO standard)"
+            # Type is INTEGER in image
+          - name: hourly_timestamp      
             description: "Weather observation timestamp"
             tests:
               - not_null
-          - name: temperature_2m
+            # Type is TIMESTAMP in image
+          - name: temperature_2m        
             description: "Air temperature at 2 meters (°C)"
-          - name: rain
-            description: "Rainfall amount (mm)"
-          - name: snowfall
-            description: "Snowfall amount (mm)"
-          - name: precipitation
-            description: "Total precipitation (mm)"
-          - name: wind_speed_10m
-            description: "Wind speed at 10 meters (km/h)"
-          - name: weather_code
-            description: "Weather condition code (WMO code)"
-          - name: relative_humidity_2m
+            # Type is FLOAT in image
+          - name: relative_humidity_2m  
             description: "Relative humidity at 2 meters (%)"
+            # Type is INTEGER in image
+          - name: precipitation         
+            description: "Total precipitation (mm)"
+            # Type is FLOAT in image
+          - name: cloudcover            
+            description: "Cloud cover percentage"
+            # Type is INTEGER in image
+          - name: windspeed_10m    
+            description: "Wind speed at 10 meters (km/h)"
+            # Type is FLOAT in image
+          - name: is_day   
+            description: "1=daytime, 0=nighttime"
+            # Type is INTEGER in image
