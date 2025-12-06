@@ -54,12 +54,12 @@ sources:
       
       - name: nyc_weather_raw
         description: "Hourly historical weather data for NYC"
-        loaded_at_field: timestamp
+        loaded_at_field: hourly_timestamp # <<< FIX 1: Change to match source table
         freshness:
           warn_after: {count: 3, period: hour}
           error_after: {count: 6, period: hour}
         columns:
-          - name: timestamp
+          - name: hourly_timestamp     # <<< FIX 2: Change to match source table
             description: "Weather observation timestamp"
             tests:
               - not_null
@@ -77,10 +77,3 @@ sources:
             description: "Weather condition code (WMO code)"
           - name: relative_humidity_2m
             description: "Relative humidity at 2 meters (%)"
-      
-      - name: raw_hourly_weather_live
-        description: "Real-time or near-real-time hourly weather observations"
-        loaded_at_field: timestamp
-        freshness:
-          warn_after: {count: 1, period: hour}
-          error_after: {count: 2, period: hour}

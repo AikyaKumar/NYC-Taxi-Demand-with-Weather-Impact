@@ -16,7 +16,7 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: [1, 2]
+              values: ['1', '2']
       - name: pickup_timestamp
         description: "Timestamp when meter was engaged"
         tests:
@@ -70,7 +70,7 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ['Manhattan', 'Brooklyn', 'Queens', 'Bronx', 'Staten Island', 'EWR']
+              values: ['Manhattan', 'Brooklyn', 'Queens', 'Bronx', 'Staten Island', 'EWR', 'Unknown', 'N/A']
       - name: zone_name
         description: "Taxi zone name"
         tests:
@@ -97,10 +97,10 @@ models:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: -30
               max_value: 45
-      - name: rain_mm
-        description: "Rainfall in millimeters"
-      - name: snowfall_mm
-        description: "Snowfall in millimeters"
+      - name: rain
+        description: "Total rain in milimeters"
+      - name: snow
+        description: "Total snow"
       - name: precipitation_mm
         description: "Total precipitation in millimeters"
       - name: wind_speed_kph

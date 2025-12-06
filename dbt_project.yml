@@ -1,49 +1,36 @@
+# dbt_project.yml - FINAL SIMPLE VERSION
 name: "dm2_aikya"
 version: "1.0.0"
 config-version: 2
 
 profile: "default"
 
-# Variables
+# Variables for SOURCES only (these WILL work in schema.yml)
 vars:
   raw_data_project: 'dm2-project-479611'
   raw_data_dataset: 'dm2_aikya'
-  staging_dataset: 'dm2_aikya_stg'
-  analytics_dataset: 'dm2_aikya_analytics'
 
-# File paths
 model-paths: ["models"]
-analysis-paths: ["analyses"]
-test-paths: ["tests"]
-seed-paths: ["seeds"]
-macro-paths: ["macros"]
-snapshot-paths: ["snapshots"]
-
 target-path: "target"
 clean-targets:
   - "target"
   - "dbt_packages"
 
-# Model configurations
+# Simple hardcoded config
 models:
   dm2_aikya:
-    
-    # Staging models - views
     staging:
       +materialized: view
-      +schema: "{{ var('staging_dataset') }}"
+      +schema: "dm2_aikya_stg"
     
-    # Dimension models - tables  
     dimensions:
       +materialized: table
-      +schema: "{{ var('analytics_dataset') }}"
+      +schema: "dm2_aikya_analytics"
     
-    # Fact models - tables
     facts:
       +materialized: table  
-      +schema: "{{ var('analytics_dataset') }}"
+      +schema: "dm2_aikya_analytics"
     
-    # Mart models - tables (for Tableau)
     marts:
       +materialized: table
-      +schema: "{{ var('analytics_dataset') }}"
+      +schema: "dm2_aikya_analytics"
