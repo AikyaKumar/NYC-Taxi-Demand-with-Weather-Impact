@@ -1,9 +1,12 @@
-# models/marts/schema.yml
 version: 2
 
 models:
+  # =======================================================================
+  # 1. Daily Aggregate Mart: mart_weather_impact_dashboard
+  #    Focus: Executive summary and daily baseline deviation.
+  # =======================================================================
   - name: mart_weather_impact_dashboard
-    description: "Daily weather impact dashboard mart - pre-aggregated metrics for Tableau visualization. Shows weather impact on taxi demand and revenue."
+    description: "Daily weather impact dashboard mart - pre-aggregated metrics showing weather impact vs. baseline for executive visualization."
     config:
       tags: ["mart", "dashboard", "tableau", "daily"]
     columns:
@@ -32,7 +35,15 @@ models:
         description: "Weather impact classification (Severe, Moderate, Minimal)"
       - name: revenue_per_trip
         description: "Average revenue per trip"
-  
+      - name: cmt_group_trips
+        description: "Total trips by CMT group (Vendors 1 & 6)."
+      - name: curb_group_trips
+        description: "Total trips by Curb group (Vendors 2 & 7)."
+
+  # =======================================================================
+  # 2. Hourly Aggregate Mart: mart_hourly_weather_patterns
+  #    Focus: Time-series analysis of demand vs. weather by hour.
+  # =======================================================================
   - name: mart_hourly_weather_patterns
     description: "Hourly weather patterns mart - shows how different weather conditions affect taxi demand throughout the day. Optimized for time-series analysis in Tableau."
     config:
@@ -50,13 +61,17 @@ models:
         description: "Average revenue per hour"
       - name: avg_temperature
         description: "Average temperature for this hour/weather combination"
-      - name: avg_rainfall
-        description: "Average rainfall for this hour/weather combination"
+      - name: avg_precipitation
+        description: "Average precipitation for this hour/weather combination"
       - name: demand_ratio_vs_time_band
         description: "Demand ratio compared to time band average"
       - name: weather_impact_scenario
         description: "Weather impact scenario classification"
-  
+
+  # =======================================================================
+  # 3. Geographical Aggregate Mart: mart_zone_weather_vulnerability
+  #    Focus: Zone-specific baselines and geographical resilience.
+  # =======================================================================
   - name: mart_zone_weather_vulnerability
     description: "Zone weather vulnerability mart - shows which taxi zones are most affected by bad weather. Perfect for geographic heat maps in Tableau."
     config:
@@ -83,3 +98,31 @@ models:
         description: "Rain-specific vulnerability"
       - name: snow_vulnerability_category
         description: "Snow-specific vulnerability"
+
+  # =======================================================================
+  # 4. Behavioral Aggregate Mart: mart_financial_behavior_analysis
+  #    Focus: Rider financial choices (tipping, payment type) during weather events.
+  # =======================================================================
+  - name: mart_financial_behavior_analysis
+    description: "Behavioral analysis mart focusing on how weather severity and time of day affect rider payment choice and tipping habits."
+    config:
+      tags: ["mart", "behavioral", "financial", "tableau"]
+    columns:
+      - name: weather_category
+        description: "General weather condition (Rain, Snow, Clear, etc.)."
+      - name: weather_severity
+        description: "Severity rating of the weather (Good, Poor, Extreme)."
+      - name: commute_period
+        description: "Time of day context (Commute Hours vs. Non-Commute)."
+      - name: payment_method
+        description: "The payment method being analyzed (Cash, Credit Card, Flex Fare)."
+      - name: total_trips
+        description: "Total number of trips for this specific scenario."
+      - name: overall_average_tip_pct
+        description: "Overall average tip percentage for trips in this scenario."
+      - name: credit_card_tip_pct
+        description: "Average tip percentage calculated only on tip-eligible transactions (Credit Card)."
+      - name: payment_share_within_scenario_pct
+        description: "The percentage share of this payment method within the current weather/time scenario."
+      - name: payment_volatility_flag
+        description: "Flag indicating a major surge or drop in trips for this payment method relative to its baseline volatility."

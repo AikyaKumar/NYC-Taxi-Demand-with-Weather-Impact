@@ -73,6 +73,7 @@ enriched AS (
         ht.total_revenue,
         ht.total_tips,
         ht.avg_trip_duration,
+        ht.avg_trip_distance,
         
         -- Payment Distribution Metrics
         ht.credit_card_trips,
@@ -84,6 +85,7 @@ enriched AS (
         ht.cmt_trips,
         ht.curb_trips,
         ht.myle_trips,
+        ht.helix_trips,
         
         -- Derived Metrics
         SAFE_DIVIDE(ht.credit_card_trips, ht.trip_count) * 100 AS credit_card_percentage,
