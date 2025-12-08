@@ -8,7 +8,7 @@ models:
         description: "Trip surrogate key (Primary Key)"
       
       - name: vendor_id
-        description: "Taxi vendor code (1=CMT, 2=Verifone) - Mapped and cleaned."
+        description: "Taxi vendor code (1=CMT, 2=Curb, 6=Myle, 7=Helix Payment)."
         tests:
           - not_null
               

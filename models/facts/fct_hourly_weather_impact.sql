@@ -3,46 +3,51 @@
 
 WITH hourly_trips AS (
     SELECT
-        -- Time Dimensions
-        DATETIME_TRUNC(t.pickup_timestamp, HOUR) AS analysis_hour,
-        DATE(t.pickup_timestamp) AS analysis_date,
-        EXTRACT(HOUR FROM t.pickup_timestamp) AS hour_of_day,
+        -- Time Keys
+        t.pickup_hour AS analysis_hour,
         
-        -- Location Dimension (Needed for zone join)
+        -- Dimension Foreign Keys (Natural Keys for joining)
         t.pickup_location_id,
+        w.weather_code,
         
-        -- Weather Data (FIX: Use precipitation_mm)
+        -- Weather Measures (from stg_weather, aliased as w)
         w.temperature_celsius,
         w.precipitation_mm,
         w.wind_speed_kph,
-        w.weather_code,
         
         -- Aggregated Trip Metrics
-        COUNT(*) AS trip_count,
+        COUNT(t.trip_sk) AS trip_count,
         SUM(t.total_amount) AS total_revenue,
         AVG(t.trip_distance) AS avg_trip_distance,
         AVG(DATETIME_DIFF(t.dropoff_timestamp, t.pickup_timestamp, MINUTE)) AS avg_trip_duration,
-        AVG(t.passenger_count) AS avg_passengers,
         SUM(t.tip_amount) AS total_tips,
         
-        -- Payment Distribution (Needed for mart_weather_impact_dashboard)
+        -- Payment Distribution (Expanded all codes from 0 to 6)
         COUNT(CASE WHEN t.payment_type = 1 THEN 1 END) AS credit_card_trips,
         COUNT(CASE WHEN t.payment_type = 2 THEN 1 END) AS cash_trips,
-        
-        -- Vendor Distribution (Needed for mart_weather_impact_dashboard)
+        COUNT(CASE WHEN t.payment_type = 0 THEN 1 END) AS flex_fare_trips,
+        COUNT(CASE WHEN t.payment_type = 3 THEN 1 END) AS no_charge_trips,
+        COUNT(CASE WHEN t.payment_type = 4 THEN 1 END) AS dispute_trips,
+        COUNT(CASE WHEN t.payment_type = 5 THEN 1 END) AS unknown_payment_trips,
+        COUNT(CASE WHEN t.payment_type = 6 THEN 1 END) AS voided_trips,
+
+        -- Vendor Distribution (Using distinct IDs 1, 2, 6, 7)
         COUNT(CASE WHEN t.vendor_id = 1 THEN 1 END) AS cmt_trips,
-        COUNT(CASE WHEN t.vendor_id = 2 THEN 1 END) AS verifone_trips
+        COUNT(CASE WHEN t.vendor_id = 2 THEN 1 END) AS curb_trips,
+        COUNT(CASE WHEN t.vendor_id = 6 THEN 1 END) AS myle_trips,
+        COUNT(CASE WHEN t.vendor_id = 7 THEN 1 END) AS helix_trips
         
     FROM {{ ref('stg_taxi_trips') }} t
     LEFT JOIN {{ ref('stg_weather') }} w
-        ON DATETIME_TRUNC(t.pickup_timestamp, HOUR) = DATETIME_TRUNC(w.weather_timestamp, HOUR)
-    -- Group by all non-aggregated columns (now 8)
-    GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
+        ON t.pickup_hour = w.weather_timestamp
+        
+    -- Group by all non-aggregated columns (10 columns)
+    GROUP BY 1, 2, 3, 4, 5, 6
 ),
 
 enriched AS (
     SELECT
-        -- Surrogate Key
+        -- Primary Key
         FARM_FINGERPRINT(
             CONCAT(
                 CAST(ht.analysis_hour AS STRING),
@@ -51,65 +56,53 @@ enriched AS (
             )
         ) AS hourly_impact_sk,
         
-        -- FIX 1: Add date_key and zone_sk for downstream marts
-        dd.date_key,
-        dz.zone_sk, 
-        
-        -- Time Dimensions
+        -- Dimension Foreign Keys
+        DATE(ht.analysis_hour) AS date_key,
+        EXTRACT(HOUR FROM ht.analysis_hour) AS hour_key,
         ht.analysis_hour,
-        ht.hour_of_day,
-        dt.datetime_sk,
-        -- ... (other time/date attributes) ...
-        
-        -- Weather Dimensions
-        wc.weather_sk,
-        wc.weather_description,
-        wc.weather_category,
-        wc.weather_severity,
-        wc.is_rainy,
-        wc.is_snowy,
+        dz.zone_sk, 
+        dwc.weather_sk,
         
         -- Weather Measures
         ht.temperature_celsius,
-        ht.precipitation_mm, -- FIX: Correct name
+        ht.precipitation_mm,
         ht.wind_speed_kph,
         
-        -- Trip Demand Metrics
+        -- Demand & Financial Metrics
         ht.trip_count,
         ht.total_revenue,
-        ht.avg_trip_distance,
-        ht.avg_trip_duration,
-        ht.avg_passengers,
         ht.total_tips,
+        ht.avg_trip_duration,
         
-        -- Payment & Vendor Metrics
+        -- Payment Distribution Metrics
         ht.credit_card_trips,
         ht.cash_trips,
-        SAFE_DIVIDE(ht.credit_card_trips, ht.trip_count) * 100 AS credit_card_percentage,
+        ht.flex_fare_trips,
+        ht.dispute_trips,
+        
+        -- Vendor Distribution Metrics (Included for mart analysis)
         ht.cmt_trips,
-        ht.verifone_trips,
-        SAFE_DIVIDE(ht.cmt_trips, ht.trip_count) * 100 AS cmt_market_share,
+        ht.curb_trips,
+        ht.myle_trips,
         
-        -- Derived Efficiency Metrics
-        ht.total_revenue / NULLIF(ht.trip_count, 0) AS avg_revenue_per_trip,
-        ht.total_tips / NULLIF(ht.total_revenue, 0) * 100 AS tip_percentage,
+        -- Derived Metrics
+        SAFE_DIVIDE(ht.credit_card_trips, ht.trip_count) * 100 AS credit_card_percentage,
+        SAFE_DIVIDE(ht.total_revenue, ht.trip_count) AS avg_revenue_per_trip,
         
-        -- Weather Impact Classification
+        -- Weather Impact Classification (Using combined weather/temperature logic)
         CASE 
-            WHEN ht.precipitation_mm > 2 THEN 'Heavy Rain/Snow Impact'
-            WHEN ht.precipitation_mm > 0 THEN 'Light Rain/Snow Impact'
-            WHEN ht.temperature_celsius > 30 THEN 'Heat Impact'
+            WHEN ht.precipitation_mm >= 3 THEN 'Heavy Rain/Snow Impact'
             WHEN ht.temperature_celsius < 0 THEN 'Cold Impact'
+            WHEN ht.temperature_celsius > 35 THEN 'Heat Impact'
+            WHEN dwc.weather_severity IN ('Severe (Heavy Impact)', 'Extreme (Major Disruption)') THEN 'Major Weather Disruption'
             ELSE 'Normal Conditions'
         END AS weather_impact_type
         
     FROM hourly_trips ht
     
-    -- Join all dimensions
-    LEFT JOIN {{ ref('dim_date_time') }} dt ON ht.analysis_hour = dt.datetime_key
-    LEFT JOIN {{ ref('dim_date') }} dd ON ht.analysis_date = dd.date_key
+    -- Join all dimensions to retrieve their Surrogate Keys
     LEFT JOIN {{ ref('dim_taxi_zones') }} dz ON ht.pickup_location_id = dz.location_id
-    LEFT JOIN {{ ref('dim_weather_conditions') }} wc ON ht.weather_code = wc.weather_code
+    LEFT JOIN {{ ref('dim_weather_conditions') }} dwc ON ht.weather_code = dwc.weather_code
 )
 
 SELECT * FROM enriched

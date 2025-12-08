@@ -3,20 +3,29 @@
 
 WITH date_range AS (
     SELECT 
-        MIN(DATE(pickup_timestamp)) as min_date,
-        MAX(DATE(pickup_timestamp)) as max_date
-    FROM {{ ref('stg_taxi_trips') }}
+        -- Determine the minimum start date from EITHER taxi or weather data
+        MIN(DATE(latest_data.min_timestamp)) as min_date,
+        -- Determine the maximum end date from EITHER taxi or weather data
+        MAX(DATE(latest_data.max_timestamp)) as max_date
+    FROM (
+        SELECT MIN(pickup_timestamp) AS min_timestamp, MAX(pickup_timestamp) AS max_timestamp FROM {{ ref('stg_taxi_trips') }}
+        UNION ALL
+        SELECT MIN(weather_timestamp) AS min_timestamp, MAX(weather_timestamp) AS max_timestamp FROM {{ ref('stg_weather') }}
+    ) latest_data
 ),
+
 all_dates AS (
     SELECT date
     FROM date_range,
     UNNEST(GENERATE_DATE_ARRAY(min_date, max_date, INTERVAL 1 DAY)) as date
 )
+
 SELECT
     date AS date_key,
     
     -- Standard date parts
     EXTRACT(YEAR FROM date) AS year,
+    -- ... (keep all standard date parts: quarter, month, day, etc.)
     EXTRACT(QUARTER FROM date) AS quarter,
     EXTRACT(MONTH FROM date) AS month,
     EXTRACT(WEEK FROM date) AS week_of_year,
@@ -32,7 +41,7 @@ SELECT
         ELSE FALSE
     END AS is_weekend,
     
-    -- NYC-specific holidays that affect taxi demand
+    -- NYC-specific holidays
     CASE 
         WHEN date IN (
         -- 2025 US Federal Holidays
@@ -58,32 +67,23 @@ SELECT
         ELSE FALSE
     END AS is_holiday,
     
-    -- Seasonal attributes for weather correlation
+    -- STANDARD SEASONAL attributes (based on calendar month)
     CASE
         WHEN EXTRACT(MONTH FROM date) IN (12, 1, 2) THEN 'Winter'
         WHEN EXTRACT(MONTH FROM date) IN (3, 4, 5) THEN 'Spring'
         WHEN EXTRACT(MONTH FROM date) IN (6, 7, 8) THEN 'Summer'
-        ELSE 'Fall'
+        ELSE 'Autumn'
     END AS season,
     
-    -- Weather-specific seasons
-    CASE
-        WHEN EXTRACT(MONTH FROM date) IN (12, 1, 2) THEN 'Cold Season'
-        WHEN EXTRACT(MONTH FROM date) IN (6, 7, 8) THEN 'Hot Season'
-        ELSE 'Transition Season'
-    END AS temperature_season,
-    
-    -- Rainy season in NYC (Spring/Fall)
-    CASE
-        WHEN EXTRACT(MONTH FROM date) IN (3, 4, 5, 9, 10, 11) THEN 'Rainy Season'
-        ELSE 'Dry Season'
-    END AS precipitation_season,
-    
-    -- NYC tourist seasons (affects taxi demand)
+    -- TOURISM SEASON is acceptable to define here as it's calendar-based
     CASE
         WHEN EXTRACT(MONTH FROM date) IN (6, 7, 8) THEN 'Peak Tourist'
         WHEN EXTRACT(MONTH FROM date) IN (5, 9) THEN 'Shoulder Tourist'
         ELSE 'Off Tourist'
     END AS tourism_season
+    
+    -- REMOVED: temperature_season and precipitation_season
+    -- REASON: These classifications (Cold/Hot/Rainy/Dry) are based on *observed weather*
+    -- and must be derived in the Fact Table by aggregating the weather dimension data.
     
 FROM all_dates

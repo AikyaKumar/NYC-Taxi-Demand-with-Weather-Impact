@@ -23,15 +23,14 @@ SELECT
     
     -- Vendor ID Mapping (Confirmed to only produce integers 1 or 2)
     CASE 
-        WHEN vendorid IN (1, 2) THEN CAST(vendorid AS INTEGER)
-        WHEN vendorid = 6 THEN 1  
-        WHEN vendorid = 7 THEN 2  
-        ELSE 1  
+        WHEN vendorid IN (1, 2, 6, 7) THEN CAST(vendorid AS INTEGER)
+        ELSE 99  -- Map unknown raw IDs to 99
     END AS vendor_id,
     
     -- Casting timestamp columns
     CAST(tpep_pickup_datetime AS TIMESTAMP) AS pickup_timestamp,
     CAST(tpep_dropoff_datetime AS TIMESTAMP) AS dropoff_timestamp,
+    TIMESTAMP_TRUNC(CAST(tpep_pickup_datetime AS TIMESTAMP), HOUR) AS pickup_hour,
     
     -- Casting metrics and dimensions
     CAST(passenger_count AS INTEGER) AS passenger_count,
@@ -40,11 +39,9 @@ SELECT
     -- Rename Location IDs
     CAST(pulocationid AS INTEGER) AS pickup_location_id,
     CAST(dolocationid AS INTEGER) AS dropoff_location_id,
-    
-    CAST(ratecodeid AS INTEGER) AS rate_code_id,
-    store_and_fwd_flag AS store_and_forward_flag,
-    CAST(payment_type AS INTEGER) AS payment_type,
-    
+    COALESCE(CAST(t.ratecodeid AS INTEGER), 99) AS rate_code_id,
+    COALESCE(t.store_and_fwd_flag, 'U') AS store_and_forward_flag,
+    CAST(payment_type AS INTEGER) AS payment_type, 
     CAST(fare_amount AS NUMERIC) AS fare_amount,
     CAST(total_amount AS NUMERIC) AS total_amount,
     
@@ -54,9 +51,6 @@ SELECT
     CAST(tip_amount AS NUMERIC) AS tip_amount,
     CAST(tolls_amount AS NUMERIC) AS tolls_amount,
     CAST(improvement_surcharge AS NUMERIC) AS improvement_surcharge,
-    
-    -- Hour for joining to weather data
-    TIMESTAMP_TRUNC(CAST(tpep_pickup_datetime AS TIMESTAMP), HOUR) AS pickup_hour
     
 FROM {{ source('dm2_aikya', 'nyc_yellow_taxi_trips_raw') }} t
 
