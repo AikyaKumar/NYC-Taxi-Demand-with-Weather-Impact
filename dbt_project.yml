@@ -9,6 +9,7 @@ profile: "default"
 vars:
   raw_data_project: 'dm2-project-479611'
   raw_data_dataset: 'dm2_aikya'
+  analytics_dataset: 'dm2_aikya_analytics'
 
 model-paths: ["models"]
 target-path: "target"
