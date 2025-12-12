@@ -1,35 +1,30 @@
-{{ config(materialized='view', schema='stg') }}
+-- models/staging/stg_nyc_weather.sql
 
-SELECT
-    -- MAPPING & CASTING
-    CAST(hourly_timestamp AS TIMESTAMP) AS weather_timestamp,
-    DATE(hourly_timestamp) AS weather_date,
-    
-    -- Sourced from the image/raw schema, defined in the target staging schema
-    CAST(weather_code AS INTEGER) AS weather_code,
-    
-    -- Sourced from the image/raw schema, defined in the target staging schema
-    CAST(temperature_2m AS NUMERIC) AS temperature_celsius,
-    
-    -- Sourced from the image/raw schema, defined in the target staging schema
-    CAST(precipitation AS NUMERIC) AS precipitation_mm,
-    
-    -- Sourced from the image/raw schema, defined in the target staging schema
-    CAST(windspeed_10m AS NUMERIC) AS wind_speed_kph, 
-    
-    -- Sourced from the image/raw schema, defined in the target staging schema
-    CAST(relative_humidity_2m AS NUMERIC) AS relative_humidity,
-    
-    -- Sourced from the image/raw schema, defined in the target staging schema
-    CAST(is_day AS INTEGER) AS is_day,
+select
 
-    -- Retain cloudcover for completeness, although not in the target staging schema provided
-    CAST(cloudcover AS INTEGER) AS cloudcover_pct,
-    
-    -- Keeping source columns for potential future use or debugging
-    latitude,
-    longitude,
-    timezone
+    -- Primary Key: Generate a unique ID based on location and time
+    MD5(
+        CAST(latitude AS STRING) ||
+        CAST(longitude AS STRING) ||
+        CAST(hourly_timestamp AS STRING)
+    ) as weather_sk,
 
-FROM `dm2-project-479611`.`dm2_aikya`.`nyc_weather_raw`
-WHERE hourly_timestamp IS NOT NULL
+    -- Location Details (used for joining)
+    cast(latitude as numeric) as latitude,
+    cast(longitude as numeric) as longitude,
+    timezone,
+
+    -- Time Details
+    cast(hourly_timestamp as timestamp) as weather_timestamp,
+
+    -- Weather Metrics
+    cast(weather_code as int) as weather_code,
+    cast(temperature_2m as numeric) as temperature,
+    cast(relative_humidity_2m as numeric) as relative_humidity,
+    cast(precipitation as numeric) as precipitation,
+    cloudcover,
+    cast(windspeed_10m as numeric) as windspeed,
+    cast(is_day as int) as is_day,
+
+-- Direct reference to the BigQuery table path:
+from `dm2-project-479611.dm2_aikya.nyc_weather_raw`

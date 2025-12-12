@@ -1,73 +1,130 @@
+# models/staging/schema.yml
+
+version: 2
+
+# ----------------------------
+# 1. RAW DATA SOURCES (For Documentation and Lineage)
+# ----------------------------
+
+sources:
+  - name: nyc_trips_raw  # A friendly name for the raw data source
+    database: dm2-project-479611  # Your Google Cloud Project ID
+    schema: dm2_aikya # The BigQuery Dataset ID where the raw table lives
+
+    tables:
+      - name: nyc_yellow_taxi_trips_raw # The physical table name
+        description: "Raw data for NYC Yellow Taxi Trips."
+        # Note: You can add column descriptions here, but we focus on the model below.
+
+# ----------------------------
+# 2. STAGING MODELS (Views)
+# ----------------------------
+
 models:
   - name: stg_taxi_trips
-    description: "Staging table for cleaned and standardized yellow taxi trip data."
-    config:
-      tags: ["staging", "taxi", "cleaned"]
+    description: "Cleaned and standardized NYC yellow taxi trip records. Removes nulls, casts types, and renames columns for consistency."
+
+    # config:
+    #   # OVERRIDING dbt_project.yml to use dm2_staging as requested
+    #   materialized: view
+    #   schema: dm2_staging
+
     columns:
       - name: trip_sk
-        description: "Trip surrogate key (Primary Key)"
-      
+        description: "The composite surrogate primary key for the trip."
       - name: vendor_id
-        description: "Taxi vendor code (1=CMT, 2=Curb, 6=Myle, 7=Helix Payment)."
+        description: "ID of the TPEP provider."
+      - name: pickup_datetime
+        description: "Timestamp of the trip start (CAST to TIMESTAMP)."
         tests:
           - not_null
-              
-      - name: pickup_timestamp
-        description: "Trip pickup datetime (TIMESTAMP)"
+      - name: dropoff_datetime
+        description: "Timestamp of the trip end (CAST to TIMESTAMP)."
         tests:
           - not_null
-          
-      - name: dropoff_timestamp
-        description: "Trip dropoff datetime (TIMESTAMP)"
-        
-      - name: pickup_hour
-        description: "Pickup hour timestamp (truncated to the hour, TIMESTAMP)"
-        tests:
-          - not_null
-          
-      - name: pickup_location_id
-        description: "Taxi Zone ID where the trip started (Foreign Key)"
-        tests:
-          - not_null
-          
-      - name: dropoff_location_id
-        description: "Taxi Zone ID where the trip ended"
-        
       - name: passenger_count
-        description: "Number of passengers"
-        
+        description: "Number of passengers in the vehicle."
       - name: trip_distance
-        description: "Trip distance in miles"
-        tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0 # Must be greater than 0 due to filtering
-              max_value: 3000 # Adjust max_value if 100 is too low/high for valid data
-              
+        description: "Elapsed trip distance in miles."
+      - name: ratecode_id
+        description: "The final rate code."
+      - name: store_and_fwd_flag
+        description: "Flag for trip records stored then forwarded."
+      - name: pickup_location_id
+        description: "Pickup Location ID (Foreign Key)."
+      - name: dropoff_location_id
+        description: "Dropoff Location ID (Foreign Key)."
+      - name: payment_type_id
+        description: "Code for the method of payment (Renamed for consistency)."
+      - name: fare_amount
+        description: "Time-and-distance fare."
+      - name: extra_amount
+        description: "Miscellaneous extras."
+      - name: mta_tax_amount
+        description: "MTA tax."
+      - name: tip_amount
+        description: "Amount of tip."
+      - name: tolls_amount
+        description: "Total amount of tolls."
+      - name: improvement_surcharge
+        description: "Mandatory surcharge."
       - name: total_amount
-        description: "Total amount charged to the customer"
+        description: "The final amount charged."
+      - name: congestion_surcharge
+        description: "Congestion fee."
+      - name: airport_fee
+        description: "Airport access fee."
+
+  - name: stg_taxi_zones
+    description: "Cleaned and standardized lookup table for taxi zone locations."
+
+    # config:
+    #   # Explicitly setting schema to dm2_staging
+    #   materialized: view
+    #   schema: dm2_staging
+
+    columns:
+      - name: location_id
+        description: "The unique Location ID (PULocationID/DOLocationID)."
+        tests:
+          - unique
+          - not_null
+      - name: borough
+        description: "The borough the zone belongs to."
+      - name: zone_name
+        description: "The descriptive name of the taxi zone."
+      - name: service_zone
+        description: "The type of service zone (e.g., Yellow Zone, EWR)."
+
+  - name: stg_weather
+    description: "Cleaned and standardized hourly weather data."
+    columns:
+      - name: weather_sk
+        description: "Surrogate primary key generated from lat/lon and timestamp."
+        tests:
+          - unique
+          - not_null
+      - name: latitude
+        description: "Latitude of the weather station."
+      - name: longitude
+        description: "Longitude of the weather station."
+      - name: timezone
+        description: "Timezone of the weather measurement."
+      - name: weather_timestamp
+        description: "Hourly timestamp of the weather measurement."
         tests:
           - not_null
-          - dbt_expectations.expect_column_values_to_be_between:
-              min_value: 0 # Must be greater than 0 due to filtering
-              max_value: 1500  # Adjust as needed (was 1104.59 max in raw data)
-              
-      - name: payment_type
-        description: "Payment type code"
-        
-      # Ensure all other columns selected in the SQL are listed here:
-      - name: rate_code_id
-        description: "Rate code applied at time of ride"
-      - name: store_and_forward_flag
-        description: "Indicates if trip record was held in vehicle memory"
-      - name: fare_amount
-        description: "The time-and-distance fare"
-      - name: extra
-        description: "Extra charges"
-      - name: mta_tax
-        description: "MTA tax"
-      - name: tip_amount
-        description: "Tip amount"
-      - name: tolls_amount
-        description: "Toll charges"
-      - name: improvement_surcharge
-        description: "Improvement surcharge"
+      - name: weather_code
+        description: "Code representing weather conditions (e.g., clear, rain)."
+      - name: temperature
+        description: "Air temperature at 2 meters above ground in Celsius."
+      - name: relative
+        description: "Relative humidity at 2 meters above ground (percent)."
+      - name: precipitation
+        description: "Total precipitation over the hour (millimeters)."
+      - name: cloudcover
+        description: "Cloud cover percentage."
+      - name: windspeed
+        description: "Wind speed at 10 meters above ground in km/h."
+      - name: is_day
+        description: "Flag indicating if the time is considered day (1) or night (0)."

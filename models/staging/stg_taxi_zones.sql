@@ -1,9 +1,14 @@
-{{ config(materialized='view', schema='stg') }}
+-- models/staging/stg_taxi_zones.sql
 
-SELECT
-    CAST(LocationID AS INT64) AS location_id,
-    Borough AS borough,
-    Zone AS zone_name,
-    service_zone
-FROM {{ source('dm2_aikya', 'nyc_taxi_zones_raw') }}
-WHERE LocationID IS NOT NULL
+select
+
+    -- Primary Key: The natural key is suitable for this dimension table
+    cast(LocationID as int) as location_id,
+
+    -- Renamed Fields (snake_case convention)
+    Borough as borough,
+    Zone as zone_name,
+    service_zone,
+
+-- Direct reference to the BigQuery table path:
+from `dm2-project-479611.dm2_aikya.nyc_taxi_zones_raw`

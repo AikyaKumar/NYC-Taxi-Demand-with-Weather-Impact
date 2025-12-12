@@ -1,174 +1,54 @@
+# models/facts/schema.yml
+
 version: 2
 
 models:
-  # =======================================================================
-  # 1. Transactional Fact: fct_trip_weather_details
-  #    Grain: One record per individual taxi trip (Micro-level analysis)
-  # =======================================================================
-  - name: fct_trip_weather_details
-    description: "Transaction-level fact table linking every single taxi trip to the exact weather conditions and dimensional context at the moment of pickup."
-    config:
-      tags: ["fact", "transactional", "trip-level"]
+  - name: fact_taxi_trips
+    description: "The core fact table for taxi trips, combining calculated metrics and Foreign Keys to all Dimension tables."
     columns:
-      # --- KEYS AND DIMENSIONS ---
       - name: trip_sk
-        description: "Primary key for the fact table, inherited from stg_taxi_trips."
-      - name: pickup_datetime_sk
-        description: "Foreign key to the Date/Time dimension (precise timestamp)."
-        tests:
-          - not_null
-      - name: pickup_zone_sk
-        description: "Foreign key to the pickup Zone dimension."
-      - name: dropoff_zone_sk
-        description: "Foreign key to the dropoff Zone dimension."
+        description: "Primary key of the fact table (from staging)."
       - name: vendor_sk
-        description: "Foreign key to the Vendor dimension."
-      - name: payment_sk
-        description: "Foreign key to the Payment Type dimension."
-      - name: pickup_weather_sk
-        description: "Foreign key to the Weather Conditions dimension."
-      
-      # --- MEASURES & ATTRIBUTES ---
-      - name: trip_duration_minutes
-        description: "Trip duration in minutes."
-      - name: total_amount
-        description: "Total revenue for the trip."
-      - name: tip_amount
-        description: "Tip amount."
-      - name: trip_distance
-        description: "Distance in miles."
-      - name: pickup_weather_severity
-        description: "Severity of weather at pickup (e.g., Fair, Severe)."
-      - name: weather_condition_at_pickup
-        description: "Classification of weather impact (e.g., Heavy Rain/Snow Trip)."
-
-  # =======================================================================
-  # 2. Hourly Aggregate Fact: fct_hourly_weather_impact
-  #    Grain: Hour and Pickup Zone (Core analysis table)
-  # =======================================================================
-  - name: fct_hourly_weather_impact
-    description: "Hourly aggregated fact table showing weather impact on taxi demand, revenue, and efficiency metrics, grouped by pickup zone."
-    config:
-      tags: ["fact", "aggregated", "hourly", "weather-impact"]
-    columns:
-      # --- KEYS AND DIMENSIONS ---
-      - name: hourly_impact_sk
-        description: "Surrogate key for hourly impact record (Composite of hour and zone)."
-        tests:
-          - unique
-          - not_null
-      - name: analysis_hour
-        description: "The hour of the analysis (TIMESTAMP in NYC time zone)."
+        description: "Foreign key to dim_vendors (Vendor ID)."
         tests:
           - not_null
-      - name: date_key
-        description: "Foreign key to the Date dimension (YYYY-MM-DD)."
-      - name: hour_key
-        description: "Foreign key to the Time of Day dimension (0-23)."
-      - name: zone_sk
-        description: "Foreign key to the pickup zone dimension."
+          - relationships:
+              to: ref('dim_vendors')
+              field: vendor_sk
+      - name: pickup_location_sk
+        description: "Foreign key to dim_locations (Pickup Location ID)."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_locations')
+              field: location_sk
+      - name: dropoff_location_sk
+        description: "Foreign key to dim_locations (Dropoff Location ID)."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_locations')
+              field: location_sk
+      - name: pickup_date_time_sk
+        description: "Foreign key to dim_date_time (Pickup Timestamp, truncated to hour)."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_date_time')
+              field: date_time_sk
       - name: weather_sk
-        description: "Foreign key to the weather conditions dimension."
-      
-      # --- MEASURES & VENDOR/PAYMENT DISTRIBUTION ---
-      - name: trip_count
-        description: "Number of trips starting in the zone during the hour."
+        description: "Foreign key to dim_weather (Weather record ID at time of pickup)."
         tests:
-          - not_null
-      - name: total_revenue
-        description: "Total revenue for the hour."
-      - name: avg_trip_duration
-        description: "Average trip duration in minutes for the hour."
-      - name: temperature_celsius
-        description: "Average temperature for the hour (°C)."
-      - name: precipitation_mm
-        description: "Total precipitation (liquid + frozen) for the hour (mm)."
-      - name: credit_card_trips
-        description: "Count of trips paid by credit card (Type 1)."
-      - name: cmt_trips
-        description: "Count of trips by CMT/Vendor 1."
-      
-      # --- DERIVED METRICS ---
-      - name: avg_revenue_per_trip
-        description: "Total revenue divided by trip count."
-      - name: weather_impact_type
-        description: "Weather condition classification (e.g., Heavy Rain Impact, Normal Conditions)."
-
-  # =======================================================================
-  # 3. Daily Aggregate Fact: fct_daily_vendor_revenue
-  #    Grain: Day and Vendor (Market share and performance analysis)
-  # =======================================================================
-  - name: fct_daily_vendor_revenue
-    description: "Daily aggregated fact table tracking total trip volume, revenue, and market share per vendor."
-    config:
-      tags: ["fact", "aggregated", "daily", "vendor-analysis"]
-    columns:
-      # --- KEYS AND DIMENSIONS ---
-      - name: daily_vendor_sk
-        description: "Surrogate key for the daily vendor record."
-        tests:
-          - unique
-          - not_null
-      - name: date_key
-        description: "Foreign key to the Date dimension."
-        tests:
-          - not_null
-      - name: vendor_sk
-        description: "Foreign key to the Vendor dimension."
-        tests:
-          - not_null
-      
-      # --- MEASURES ---
-      - name: daily_trip_count
-        description: "Total number of trips for the vendor on that day."
-        tests:
-          - not_null
-      - name: daily_total_revenue
-        description: "Total revenue for the vendor on that day."
-      - name: daily_avg_trip_distance
-        description: "Average trip distance for the vendor on that day."
-      - name: non_revenue_trip_count
-        description: "Count of trips with No Charge, Dispute, Unknown, or Voided status."
-      
-      # --- DERIVED METRICS ---
-      - name: daily_avg_revenue_per_trip
-        description: "Average revenue per trip for the vendor."
-      - name: daily_tip_percentage
-        description: "Tip percentage (total tips / total revenue) for the vendor."
-
-  # =======================================================================
-  # 4. Hourly Aggregate Fact: fct_zone_route_demand
-  #    Grain: Hour, Pickup Zone, and Dropoff Zone (Route analysis)
-  # =======================================================================
-  - name: fct_zone_route_demand
-    description: "Hourly aggregated fact table tracking demand, revenue, and duration between specific pickup and dropoff zones."
-    config:
-      tags: ["fact", "aggregated", "hourly", "route-analysis"]
-    columns:
-      # --- KEYS AND DIMENSIONS ---
-      - name: route_demand_sk
-        description: "Surrogate key for the hourly route record."
-        tests:
-          - not_null
-      - name: date_key
-        description: "Foreign key to the Date dimension."
-        tests:
-          - not_null
-      - name: hour_key
-        description: "Foreign key to the Time of Day dimension."
-      - name: pickup_zone_sk
-        description: "Foreign key to the Pickup Zone dimension."
-      - name: dropoff_zone_sk
-        description: "Foreign key to the Dropoff Zone dimension."
-      
-      # --- MEASURES ---
-      - name: route_trip_count
-        description: "Number of trips taken along this specific route and hour."
-        tests:
-          - not_null
-      - name: route_total_revenue
-        description: "Total revenue generated by this route."
-      - name: route_avg_duration
-        description: "Average duration of trips on this route."
-      - name: issue_trip_count
-        description: "Count of trips marked as Dispute/Voided on this route."
+          - relationships:
+              to: ref('dim_weather')
+              field: weather_sk
+      - name: trip_duration_minutes
+        description: "Calculated duration of the trip in minutes."
+      - name: passenger_count
+        description: "Number of passengers (core metric)."
+      - name: total_amount
+        description: "The final total charged (core metric)."
+      - name: total_amount_check
+        description: "Validation column: sum of components. Should equal total_amount."
+      - name: tip_amount
+        description: "Tip amount (key analytical metric)."

@@ -1,37 +1,38 @@
-# dbt_project.yml - FINAL SIMPLE VERSION
 name: "dm2_aikya"
 version: "1.0.0"
 config-version: 2
 
 profile: "default"
 
-# Variables for SOURCES only (these WILL work in schema.yml)
-vars:
-  raw_data_project: 'dm2-project-479611'
-  raw_data_dataset: 'dm2_aikya'
-  analytics_dataset: 'dm2_aikya_analytics'
+# NO VARIABLES SECTION - remove it completely
 
 model-paths: ["models"]
-target-path: "target"
 clean-targets:
   - "target"
   - "dbt_packages"
 
-# Simple hardcoded config
+# REMOVE the dispatch section - it's causing issues
+
+# --- MODEL CONFIGURATION ---
+# Top-level key must match the project name above
 models:
   dm2_aikya:
+    # 1. STAGING MODELS
     staging:
       +materialized: view
-      +schema: "dm2_aikya_stg"
+      +schema: dm2_staging  # Fixed schema name
     
     dimensions:
       +materialized: table
-      +schema: "dm2_aikya_analytics"
+      +schema: "dm2_analytics"
     
-    facts:
-      +materialized: table  
-      +schema: "dm2_aikya_analytics"
-    
-    marts:
+    fact:
       +materialized: table
-      +schema: "dm2_aikya_analytics"
+      +schema: "dm2_analytics"
+
+    mart:
+      +materialized: table
+      +schema: "dm2_analytics"
+
+flags:
+  require_generic_test_arguments_property: true

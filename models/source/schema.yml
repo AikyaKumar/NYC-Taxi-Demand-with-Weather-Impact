@@ -6,14 +6,9 @@ sources:
     description: "Raw NYC Taxi and Weather data for weather impact analysis"
     database: "dm2-project-479611"
     schema: "dm2_aikya"
-    
     tables:
       - name: nyc_yellow_taxi_trips_raw
         description: "Raw NYC yellow taxi trip records - includes pickup/dropoff times, fares, and locations"
-        loaded_at_field: tpep_pickup_datetime
-        freshness:
-          warn_after: {count: 24, period: hour}
-          error_after: {count: 48, period: hour}
         columns:
           - name: vendorid
             description: "Taxi vendor identifier (1=CMT, 2=Verifone)"
@@ -35,6 +30,12 @@ sources:
             description: "Total amount charged to passenger"
             tests:
               - not_null
+
+        config:
+          loaded_at_field: tpep_pickup_datetime
+          freshness:
+            warn_after: {count: 24, period: hour}
+            error_after: {count: 48, period: hour}
       
       - name: nyc_taxi_zones_raw
         description: "Taxi zone lookup table - maps location IDs to boroughs and zone names"
