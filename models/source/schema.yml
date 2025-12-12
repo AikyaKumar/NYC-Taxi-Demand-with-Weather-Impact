@@ -6,14 +6,9 @@ sources:
     description: "Raw NYC Taxi and Weather data for weather impact analysis"
     database: "dm2-project-479611"
     schema: "dm2_aikya"
-    
     tables:
       - name: nyc_yellow_taxi_trips_raw
         description: "Raw NYC yellow taxi trip records - includes pickup/dropoff times, fares, and locations"
-        loaded_at_field: tpep_pickup_datetime
-        freshness:
-          warn_after: {count: 24, period: hour}
-          error_after: {count: 48, period: hour}
         columns:
           - name: vendorid
             description: "Taxi vendor identifier (1=CMT, 2=Verifone)"
@@ -35,6 +30,12 @@ sources:
             description: "Total amount charged to passenger"
             tests:
               - not_null
+
+        config:
+          loaded_at_field: tpep_pickup_datetime
+          freshness:
+            warn_after: {count: 24, period: hour}
+            error_after: {count: 48, period: hour}
       
       - name: nyc_taxi_zones_raw
         description: "Taxi zone lookup table - maps location IDs to boroughs and zone names"
@@ -54,33 +55,44 @@ sources:
       
       - name: nyc_weather_raw
         description: "Hourly historical weather data for NYC"
-        loaded_at_field: timestamp
+        # The image shows 'hourly_timestamp' as the timestamp field.
+        loaded_at_field: hourly_timestamp
         freshness:
           warn_after: {count: 3, period: hour}
           error_after: {count: 6, period: hour}
         columns:
-          - name: timestamp
+          - name: latitude              
+            description: "Latitude"
+            # Type is FLOAT in image
+          - name: longitude             
+            description: "Longitude"
+            # Type is FLOAT in image
+          - name: timezone              
+            description: "Timezone string"
+            # Type is STRING in image
+          - name: weather_code          
+            description: "Weather condition code (WMO standard)"
+            # Type is INTEGER in image
+          - name: hourly_timestamp      
             description: "Weather observation timestamp"
             tests:
               - not_null
-          - name: temperature_2m
+            # Type is TIMESTAMP in image
+          - name: temperature_2m        
             description: "Air temperature at 2 meters (°C)"
-          - name: rain
-            description: "Rainfall amount (mm)"
-          - name: snowfall
-            description: "Snowfall amount (mm)"
-          - name: precipitation
-            description: "Total precipitation (mm)"
-          - name: wind_speed_10m
-            description: "Wind speed at 10 meters (km/h)"
-          - name: weather_code
-            description: "Weather condition code (WMO code)"
-          - name: relative_humidity_2m
+            # Type is FLOAT in image
+          - name: relative_humidity_2m  
             description: "Relative humidity at 2 meters (%)"
-      
-      - name: raw_hourly_weather_live
-        description: "Real-time or near-real-time hourly weather observations"
-        loaded_at_field: timestamp
-        freshness:
-          warn_after: {count: 1, period: hour}
-          error_after: {count: 2, period: hour}
+            # Type is INTEGER in image
+          - name: precipitation         
+            description: "Total precipitation (mm)"
+            # Type is FLOAT in image
+          - name: cloudcover            
+            description: "Cloud cover percentage"
+            # Type is INTEGER in image
+          - name: windspeed_10m    
+            description: "Wind speed at 10 meters (km/h)"
+            # Type is FLOAT in image
+          - name: is_day   
+            description: "1=daytime, 0=nighttime"
+            # Type is INTEGER in image

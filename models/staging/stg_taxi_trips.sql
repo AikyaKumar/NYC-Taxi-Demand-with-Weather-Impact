@@ -1,44 +1,40 @@
-{{ config(materialized='view', schema='stg') }}
+-- models/staging/stg_nyc_yellow_taxi_trips.sql
 
-SELECT
-    -- Generate surrogate key (matches your YAML)
-    FARM_FINGERPRINT(
-        CONCAT(
-            CAST(tpep_pickup_datetime AS STRING), 
-            CAST(pulocationid AS STRING), 
-            CAST(dolocationid AS STRING)
-        )
-    ) AS trip_sk,
-    
-    vendorid AS vendor_id,
-    
-    -- Casting timestamp columns
-    CAST(tpep_pickup_datetime AS TIMESTAMP) AS pickup_timestamp,
-    CAST(tpep_dropoff_datetime AS TIMESTAMP) AS dropoff_timestamp,
-    
-    passenger_count,
-    trip_distance,
-    
-    -- Rename Location IDs
-    pulocationid AS pickup_location_id,
-    dolocationid AS dropoff_location_id,
-    
-    ratecodeid AS rate_code_id,
-    store_and_fwd_flag AS store_and_forward_flag,
-    payment_type,
-    fare_amount,
-    total_amount,
-    
-    -- Additional columns (you might want to add to YAML)
-    extra,
-    mta_tax,
-    tip_amount,
-    tolls_amount,
-    improvement_surcharge,
-    
-    -- Hour for partitioning/analysis
-    TIMESTAMP_TRUNC(CAST(tpep_pickup_datetime AS TIMESTAMP), HOUR) AS pickup_hour
-    
--- CORRECTED SOURCE NAME: 'dm2_aikya' not 'dm2_aikya_raw'
-FROM {{ source('dm2_aikya', 'nyc_yellow_taxi_trips_raw') }}
-WHERE tpep_pickup_datetime IS NOT NULL
+select
+
+    -- Primary Key: Creating a robust, unique identifier for each trip
+    -- Note: We still need the dbt_utils package for generate_surrogate_key
+    {{ dbt_utils.generate_surrogate_key(['VendorID', 'tpep_pickup_datetime', 'tpep_dropoff_datetime']) }} as trip_sk,
+
+    -- Renamed Fields (snake_case convention)
+    cast(VendorID as int) as vendor_id,
+
+    -- Date and Time Fields (Casting for consistency)
+    cast(tpep_pickup_datetime as timestamp) as pickup_datetime,
+    cast(tpep_dropoff_datetime as timestamp) as dropoff_datetime,
+
+    -- Trip Details
+    cast(passenger_count as int) as passenger_count,
+    cast(trip_distance as numeric) as trip_distance,
+    cast(RatecodeID as int) as ratecode_id,
+    store_and_fwd_flag,
+
+    -- Location IDs
+    cast(PULocationID as int) as pickup_location_id,
+    cast(DOLocationID as int) as dropoff_location_id,
+
+    -- Financial Amounts
+    cast(payment_type as int) as payment_type_id,
+    cast(fare_amount as numeric) as fare_amount,
+    cast(extra as numeric) as extra_amount,
+    cast(mta_tax as numeric) as mta_tax_amount,
+    cast(tip_amount as numeric) as tip_amount,
+    cast(tolls_amount as numeric) as tolls_amount,
+    cast(improvement_surcharge as numeric) as improvement_surcharge,
+    cast(total_amount as numeric) as total_amount,
+    cast(congestion_surcharge as numeric) as congestion_surcharge,
+    cast(Airport_fee as numeric) as airport_fee,
+
+
+-- Direct reference to the BigQuery table path:
+from `dm2-project-479611.dm2_aikya.nyc_yellow_taxi_trips_raw`

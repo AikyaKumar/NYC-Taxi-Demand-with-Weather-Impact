@@ -1,97 +1,54 @@
 # models/facts/schema.yml
+
 version: 2
 
 models:
-  - name: fct_trip_weather_details
-    description: "Trip-level fact table with detailed weather conditions at pickup time. For granular analysis of individual trips."
-    config:
-      tags: ["fact", "transactional", "trip-level", "weather-details"]
+  - name: fact_taxi_trips
+    description: "The core fact table for taxi trips, combining calculated metrics and Foreign Keys to all Dimension tables."
     columns:
       - name: trip_sk
-        description: "Trip surrogate key"
+        description: "Primary key of the fact table (from staging)."
+      - name: vendor_sk
+        description: "Foreign key to dim_vendors (Vendor ID)."
         tests:
           - not_null
-      - name: pickup_datetime_sk
-        description: "Foreign key to datetime dimension"
+          - relationships:
+              to: ref('dim_vendors')
+              field: vendor_sk
+      - name: pickup_location_sk
+        description: "Foreign key to dim_locations (Pickup Location ID)."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_locations')
+              field: location_sk
+      - name: dropoff_location_sk
+        description: "Foreign key to dim_locations (Dropoff Location ID)."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_locations')
+              field: location_sk
+      - name: pickup_date_time_sk
+        description: "Foreign key to dim_date_time (Pickup Timestamp, truncated to hour)."
         tests:
           - not_null
           - relationships:
               to: ref('dim_date_time')
-              field: datetime_sk
-      - name: pickup_zone_sk
-        description: "Foreign key to pickup zone dimension"
-        tests:
-          - relationships:
-              to: ref('dim_taxi_zones')
-              field: zone_sk
+              field: date_time_sk
       - name: weather_sk
-        description: "Foreign key to weather conditions dimension"
+        description: "Foreign key to dim_weather (Weather record ID at time of pickup)."
         tests:
           - relationships:
-              to: ref('dim_weather_conditions')
+              to: ref('dim_weather')
               field: weather_sk
-      - name: pickup_temp_c
-        description: "Temperature at pickup time (°C)"
-      - name: pickup_rain_mm
-        description: "Rainfall at pickup time (mm)"
-      - name: was_rainy
-        description: "TRUE if weather was rainy at pickup"
-      - name: trip_distance
-        description: "Trip distance in miles"
-      - name: total_amount
-        description: "Total fare amount"
-        tests:
-          - not_null
       - name: trip_duration_minutes
-        description: "Trip duration in minutes"
-      - name: weather_condition_at_pickup
-        description: "Weather condition classification at pickup"
-  
-  - name: fct_hourly_weather_impact
-    description: "Hourly aggregated fact table showing weather impact on taxi demand, revenue, and efficiency metrics."
-    config:
-      tags: ["fact", "aggregated", "hourly", "weather-impact"]
-    columns:
-      - name: hourly_impact_sk
-        description: "Surrogate key for hourly impact record"
-        tests:
-          - unique
-          - not_null
-      - name: datetime_sk
-        description: "Foreign key to datetime dimension"
-        tests:
-          - relationships:
-              to: ref('dim_date_time')
-              field: datetime_sk
-      - name: date_key
-        description: "Foreign key to date dimension"
-        tests:
-          - relationships:
-              to: ref('dim_date')
-              field: date_key
-      - name: zone_sk
-        description: "Foreign key to zone dimension"
-        tests:
-          - relationships:
-              to: ref('dim_taxi_zones')
-              field: zone_sk
-      - name: weather_sk
-        description: "Foreign key to weather conditions dimension"
-        tests:
-          - relationships:
-              to: ref('dim_weather_conditions')
-              field: weather_sk
-      - name: temperature_celsius
-        description: "Average temperature for the hour"
-      - name: rain_mm
-        description: "Total rainfall for the hour"
-      - name: trip_count
-        description: "Number of trips in the hour"
-        tests:
-          - not_null
-      - name: total_revenue
-        description: "Total revenue for the hour"
-      - name: credit_card_percentage
-        description: "Percentage of trips paid by credit card"
-      - name: weather_impact_type
-        description: "Weather impact classification"
+        description: "Calculated duration of the trip in minutes."
+      - name: passenger_count
+        description: "Number of passengers (core metric)."
+      - name: total_amount
+        description: "The final total charged (core metric)."
+      - name: total_amount_check
+        description: "Validation column: sum of components. Should equal total_amount."
+      - name: tip_amount
+        description: "Tip amount (key analytical metric)."
